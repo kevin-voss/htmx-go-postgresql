@@ -14,7 +14,9 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/issue"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/project"
+	"github.com/kevin-voss/htmx-go-postgresql/web"
 )
 
 type authzMemberStore struct {
@@ -249,6 +251,256 @@ func TestMemberCanChangeIssueStatus(t *testing.T) {
 	if got.Status != issue.StatusInProgress {
 		t.Fatalf("status = %q, want %q", got.Status, issue.StatusInProgress)
 	}
+}
+
+func TestCreateIssuePartialReturnsListItem(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := render.New(web.Templates)
+	if err != nil {
+		t.Fatalf("render.New: %v", err)
+	}
+
+	memberSvc := member.NewService(&authzMemberStore{
+		access: map[string]member.Access{
+			"acme|member1": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership: member.Membership{
+					ID:          "m2",
+					WorkspaceID: "w1",
+					UserID:      "member1",
+					Role:        member.RoleMember,
+				},
+			},
+		},
+	})
+	projectSvc := project.NewService(&handlerProjectStore{
+		bySlug: map[string]project.Project{
+			"w1|platform": {
+				ID:          "proj-a",
+				WorkspaceID: "w1",
+				Name:        "Platform",
+				Slug:        "platform",
+			},
+		},
+	})
+	h := issue.NewHandler(
+		issue.NewService(newHandlerMemoryStore()).WithMembershipChecker(memberSvc),
+		projectSvc,
+		memberSvc,
+		renderer,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	mux := http.NewServeMux()
+	h.Mount(mux)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/w/acme/projects/platform/issues",
+		strings.NewReader("title=Ship+it&description=Details"),
+	)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request-Type", "partial")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), auth.User{
+		ID:          "member1",
+		Email:       "member@example.com",
+		DisplayName: "Member",
+	}))
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d body=%q", rr.Code, http.StatusCreated, rr.Body.String())
+	}
+	body := rr.Body.String()
+	if strings.Contains(body, "<html") {
+		t.Fatalf("partial response included full layout: %q", body)
+	}
+	if !strings.Contains(body, `id="issue-item-1"`) || !strings.Contains(body, "Ship it") {
+		t.Fatalf("body missing issue list item, got %q", body)
+	}
+	if !strings.Contains(body, "hx-patch=") {
+		t.Fatalf("body missing status hx-patch, got %q", body)
+	}
+}
+
+func TestCreateIssuePartialValidationReturns422Fragment(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := render.New(web.Templates)
+	if err != nil {
+		t.Fatalf("render.New: %v", err)
+	}
+
+	memberSvc := member.NewService(&authzMemberStore{
+		access: map[string]member.Access{
+			"acme|member1": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership: member.Membership{
+					ID:          "m2",
+					WorkspaceID: "w1",
+					UserID:      "member1",
+					Role:        member.RoleMember,
+				},
+			},
+		},
+	})
+	projectSvc := project.NewService(&handlerProjectStore{
+		bySlug: map[string]project.Project{
+			"w1|platform": {
+				ID:          "proj-a",
+				WorkspaceID: "w1",
+				Name:        "Platform",
+				Slug:        "platform",
+			},
+		},
+	})
+	h := issue.NewHandler(
+		issue.NewService(newHandlerMemoryStore()).WithMembershipChecker(memberSvc),
+		projectSvc,
+		memberSvc,
+		renderer,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	mux := http.NewServeMux()
+	h.Mount(mux)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/w/acme/projects/platform/issues",
+		strings.NewReader("title=&description=Nope"),
+	)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request-Type", "partial")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), auth.User{
+		ID:          "member1",
+		Email:       "member@example.com",
+		DisplayName: "Member",
+	}))
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want %d body=%q", rr.Code, http.StatusUnprocessableEntity, rr.Body.String())
+	}
+	body := rr.Body.String()
+	if strings.Contains(body, "<html") || strings.Contains(body, "<form") {
+		t.Fatalf("422 fragment should be errors only, got %q", body)
+	}
+	if !strings.Contains(body, "form-field__error") || !strings.Contains(body, "Title is required.") {
+		t.Fatalf("body missing validation error, got %q", body)
+	}
+}
+
+func TestUpdateStatusPartialReturnsIssueCard(t *testing.T) {
+	t.Parallel()
+
+	renderer, err := render.New(web.Templates)
+	if err != nil {
+		t.Fatalf("render.New: %v", err)
+	}
+
+	memberSvc := member.NewService(&authzMemberStore{
+		access: map[string]member.Access{
+			"acme|member1": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership: member.Membership{
+					ID:          "m2",
+					WorkspaceID: "w1",
+					UserID:      "member1",
+					Role:        member.RoleMember,
+				},
+			},
+		},
+	})
+	store := newHandlerMemoryStore()
+	issueSvc := issue.NewService(store).WithMembershipChecker(memberSvc)
+	created, _, err := issueSvc.Create(context.Background(), issue.CreateInput{
+		ProjectID: "proj-a",
+		Title:     "Editable",
+		CreatedBy: "member1",
+	})
+	if err != nil {
+		t.Fatalf("create issue: %v", err)
+	}
+
+	h := issue.NewHandler(
+		issueSvc,
+		project.NewService(nil),
+		memberSvc,
+		renderer,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	mux := http.NewServeMux()
+	h.Mount(mux)
+
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/w/acme/issues/1/status",
+		strings.NewReader("status=in_progress&project_slug=platform"),
+	)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request-Type", "partial")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), auth.User{
+		ID:          "member1",
+		Email:       "member@example.com",
+		DisplayName: "Member",
+	}))
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d body=%q", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	body := rr.Body.String()
+	if strings.Contains(body, "<html") {
+		t.Fatalf("partial response included full layout: %q", body)
+	}
+	if !strings.Contains(body, `id="issue-card-1"`) || !strings.Contains(body, "In Progress") {
+		t.Fatalf("body missing updated issue card, got %q", body)
+	}
+	got, err := store.GetByProjectAndNumber(context.Background(), "proj-a", created.IssueNumber)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Status != issue.StatusInProgress {
+		t.Fatalf("status = %q, want %q", got.Status, issue.StatusInProgress)
+	}
+}
+
+type handlerProjectStore struct {
+	bySlug map[string]project.Project
+}
+
+func (s *handlerProjectStore) Create(context.Context, string, string, string, string) (project.Project, error) {
+	return project.Project{}, nil
+}
+
+func (s *handlerProjectStore) ListByWorkspace(context.Context, string) ([]project.Project, error) {
+	return nil, nil
+}
+
+func (s *handlerProjectStore) GetByWorkspaceAndSlug(_ context.Context, workspaceID, slug string) (project.Project, error) {
+	p, ok := s.bySlug[workspaceID+"|"+slug]
+	if !ok {
+		return project.Project{}, project.ErrNotFound
+	}
+	return p, nil
+}
+
+func (s *handlerProjectStore) GetByID(_ context.Context, id string) (project.Project, error) {
+	for _, p := range s.bySlug {
+		if p.ID == id {
+			return p, nil
+		}
+	}
+	return project.Project{}, project.ErrNotFound
 }
 
 // handler memory store (duplicated for issue_test package).

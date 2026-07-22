@@ -1,5 +1,5 @@
 {{define "issue_card"}}
-<article class="issue-card">
+<article class="issue-card" id="issue-card-{{.Issue.IssueNumber}}">
   <div class="issue-card__header">
     <p class="issue-card__title">
       <a href="/w/{{.WorkspaceSlug}}/projects/{{.ProjectSlug}}/issues/{{.Issue.IssueNumber}}">
@@ -19,16 +19,29 @@
 
   {{if .CanEdit}}
   <div class="cluster">
-    <form class="cluster" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/status">
+    <form
+      class="cluster"
+      method="post"
+      action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/status"
+      hx-patch="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/status"
+      hx-target="closest .issue-card"
+      hx-swap="outerHTML"
+      hx-indicator="find .htmx-indicator"
+      hx-disable="find button"
+    >
       {{template "csrf_field" .CSRFToken}}
       <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.ProjectSlug}}/issues">
+      <input type="hidden" name="project_slug" value="{{.ProjectSlug}}">
       <label class="u-sr-only" for="status-{{.Issue.IssueNumber}}">Status</label>
       <select class="form-field__input" id="status-{{.Issue.IssueNumber}}" name="status">
         {{range .Statuses}}
         <option value="{{.Value}}"{{if eq $.Issue.Status .Value}} selected{{end}}>{{.Label}}</option>
         {{end}}
       </select>
-      <button class="button" type="submit">Set status</button>
+      <button class="button" type="submit">
+        Set status
+        <span class="htmx-indicator" aria-hidden="true">Saving…</span>
+      </button>
     </form>
 
     <form class="cluster" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/priority">

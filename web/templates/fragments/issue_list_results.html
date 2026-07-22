@@ -1,0 +1,16 @@
+{{define "issue_list_results"}}
+{{if .Cards}}
+<ul id="issue-list" class="stack">
+  {{range .Cards}}
+  {{template "issue_list_item" .}}
+  {{end}}
+</ul>
+{{else}}
+<ul id="issue-list" class="stack"></ul>
+{{if .FilterActive}}
+<p class="issue-list-empty">No issues match your filters.</p>
+{{else}}
+<p class="issue-list-empty">No issues yet.</p>
+{{end}}
+{{end}}
+{{end}}

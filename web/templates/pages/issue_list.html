@@ -9,7 +9,18 @@
         in {{.WorkspaceName}}{{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.
       </p>
 
-      <form class="stack" method="get" action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues" style="max-inline-size: 40rem;">
+      <form
+        class="stack"
+        method="get"
+        action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+        style="max-inline-size: 40rem;"
+        hx-get="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+        hx-target="#issue-list-results"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        hx-indicator="#issue-filter-indicator"
+        hx-disable="find button[type='submit']"
+      >
         <h2>Filter</h2>
         <div class="form-field">
           <label class="form-field__label" for="q">Search</label>
@@ -64,31 +75,40 @@
           </div>
         </div>
         <div class="cluster">
-          <button class="button button--primary" type="submit">Apply filters</button>
+          <button class="button button--primary" type="submit">
+            Apply filters
+            <span id="issue-filter-indicator" class="htmx-indicator" aria-hidden="true">Loading…</span>
+          </button>
           {{if .FilterActive}}
           <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">Clear</a>
           {{end}}
         </div>
       </form>
 
-      {{if .Cards}}
-      <ul class="stack">
-        {{range .Cards}}
-        <li>
-          {{template "issue_card" .}}
-        </li>
-        {{end}}
-      </ul>
-      {{else if .FilterActive}}
-      <p>No issues match your filters.</p>
-      {{else}}
-      <p>No issues yet.</p>
-      {{end}}
+      <div id="issue-list-results">
+        {{template "issue_list_results" .}}
+      </div>
 
       {{if .CanCreate}}
       <div class="stack" style="max-inline-size: 32rem;">
         <h2>New issue</h2>
-        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues" novalidate>
+        <div id="issue-form-errors" class="form-errors" aria-live="polite">
+          {{template "issue_form_errors" .Errors}}
+        </div>
+        <form
+          class="stack"
+          method="post"
+          action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+          novalidate
+          hx-post="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+          hx-target="#issue-list"
+          hx-swap="beforeend"
+          hx-status:422="target:#issue-form-errors swap:innerHTML"
+          hx-indicator="#issue-create-indicator"
+          hx-disable="find button[type='submit']"
+          hx-on:htmx:before:request="document.getElementById('issue-form-errors').replaceChildren()"
+          hx-on:htmx:after:request="if (ctx.response.status < 400) this.reset()"
+        >
           {{template "csrf_field" .CSRFToken}}
           <div class="form-field">
             <label class="form-field__label" for="title">Title</label>
@@ -101,9 +121,6 @@
               maxlength="200"
               value="{{.Form.Title}}"
             >
-            {{with .Errors.Title}}
-            <p class="form-field__error">{{.}}</p>
-            {{end}}
           </div>
 
           <div class="form-field">
@@ -117,7 +134,10 @@
           </div>
 
           <div class="cluster">
-            <button class="button button--primary" type="submit">Create issue</button>
+            <button class="button button--primary" type="submit">
+              Create issue
+              <span id="issue-create-indicator" class="htmx-indicator" aria-hidden="true">Creating…</span>
+            </button>
           </div>
         </form>
       </div>

@@ -11,6 +11,7 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/request"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/project"
 )
 
@@ -166,19 +167,19 @@ type createFormData struct {
 }
 
 type cardData struct {
-	WorkspaceSlug  string
-	ProjectSlug    string
-	Issue          Issue
-	DisplayKey     string
-	StatusLabel    string
-	PriorityLabel  string
-	AssigneeLabel  string
-	Labels         []Label
-	CSRFToken      string
-	CanEdit        bool
-	Statuses       []optionData
-	Priorities     []optionData
-	Members        []memberOption
+	WorkspaceSlug string
+	ProjectSlug   string
+	Issue         Issue
+	DisplayKey    string
+	StatusLabel   string
+	PriorityLabel string
+	AssigneeLabel string
+	Labels        []Label
+	CSRFToken     string
+	CanEdit       bool
+	Statuses      []optionData
+	Priorities    []optionData
+	Members       []memberOption
 }
 
 type showPageData struct {
@@ -286,7 +287,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	csrf := middleware.CSRFToken(r.Context())
-	h.renderList(w, http.StatusOK, listPageData{
+	data := listPageData{
 		CSRFToken:     csrf,
 		WorkspaceID:   ws.ID,
 		WorkspaceName: ws.Name,
@@ -303,7 +304,15 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		Labels:        workspaceLabels,
 		Filter:        filter,
 		FilterActive:  filter.Active(),
-	})
+	}
+	if request.IsPartialRequest(r) {
+		if err := h.render.RenderFragment(w, http.StatusOK, "issue_list", "issue_list_results", data); err != nil {
+			h.logger.Error("render issue list results failed", "err", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+	h.renderList(w, http.StatusOK, data)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
@@ -348,6 +357,13 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if fieldErrs.Any() {
+		if request.IsPartialRequest(r) {
+			if err := h.render.RenderFragment(w, http.StatusUnprocessableEntity, "issue_list", "issue_form_errors", fieldErrs); err != nil {
+				h.logger.Error("render issue form errors failed", "err", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+			return
+		}
 		issues, listErr := h.service.ListByProject(r.Context(), p.ID, ListFilter{})
 		if listErr != nil {
 			h.logger.Error("list issues failed", "err", listErr, "project_id", p.ID)
@@ -404,6 +420,19 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		"project_id", p.ID,
 		"user_id", user.ID,
 	)
+	if request.IsPartialRequest(r) {
+		card, cardErr := h.buildCardData(r, ws, p.Slug, issue, true)
+		if cardErr != nil {
+			h.logger.Error("build issue card failed", "err", cardErr, "issue_id", issue.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if err := h.render.RenderFragment(w, http.StatusCreated, "issue_list", "issue_list_item", card); err != nil {
+			h.logger.Error("render issue list item failed", "err", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
 	http.Redirect(
 		w,
 		r,
@@ -531,6 +560,10 @@ func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if request.IsPartialRequest(r) {
+		h.renderStatusFragment(w, r, ws, issue)
+		return
+	}
 	h.redirectAfterMutation(w, r, ws.Slug, issue)
 }
 
@@ -794,6 +827,107 @@ func (h *Handler) parseWorkspaceIssue(w http.ResponseWriter, r *http.Request) (w
 		return workspaceAccess{}, 0, false
 	}
 	return ws, issueNumber, true
+}
+
+func (h *Handler) renderStatusFragment(w http.ResponseWriter, r *http.Request, ws workspaceAccess, issue Issue) {
+	role, _ := middleware.WorkspaceRoleFromContext(r.Context())
+	canEdit := member.Role(role).CanMutate()
+	projectSlug := strings.TrimSpace(r.FormValue("project_slug"))
+	if projectSlug != "" {
+		card, err := h.buildCardData(r, ws, projectSlug, issue, canEdit)
+		if err != nil {
+			h.logger.Error("build issue card failed", "err", err, "issue_id", issue.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if err := h.render.RenderFragment(w, http.StatusOK, "issue_list", "issue_card", card); err != nil {
+			h.logger.Error("render issue card failed", "err", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	p, err := h.projects.GetByID(r.Context(), issue.ProjectID)
+	if err != nil {
+		h.logger.Error("get project for status fragment failed", "err", err, "project_id", issue.ProjectID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	members, memberOpts, err := h.loadMembers(r, ws.ID)
+	if err != nil {
+		h.logger.Error("list members failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	attached, err := h.service.LabelsForIssue(r.Context(), issue.ID)
+	if err != nil {
+		h.logger.Error("list issue labels failed", "err", err, "issue_id", issue.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	data := showPageData{
+		CSRFToken:     middleware.CSRFToken(r.Context()),
+		WorkspaceID:   ws.ID,
+		WorkspaceName: ws.Name,
+		WorkspaceSlug: ws.Slug,
+		Project:       p,
+		Issue:         issue,
+		DisplayKey:    DisplayKey(p.Slug, issue.IssueNumber),
+		StatusLabel:   StatusLabel(issue.Status),
+		PriorityLabel: PriorityLabel(issue.Priority),
+		AssigneeLabel: assigneeLabel(issue.AssigneeID, members),
+		Labels:        attached,
+		User:          user,
+		Role:          role,
+		CanEdit:       canEdit,
+		Statuses:      statusOptions(),
+		Priorities:    priorityOptions(),
+		Members:       memberOpts,
+	}
+	if err := h.render.RenderFragment(w, http.StatusOK, "issue_show", "issue_status_panel", data); err != nil {
+		h.logger.Error("render issue status panel failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) buildCardData(
+	r *http.Request,
+	ws workspaceAccess,
+	projectSlug string,
+	issue Issue,
+	canEdit bool,
+) (cardData, error) {
+	members, memberOpts, err := h.loadMembers(r, ws.ID)
+	if err != nil {
+		return cardData{}, err
+	}
+	labels, err := h.service.LabelsForIssue(r.Context(), issue.ID)
+	if err != nil {
+		return cardData{}, err
+	}
+	if labels == nil {
+		labels = []Label{}
+	}
+	return cardData{
+		WorkspaceSlug: ws.Slug,
+		ProjectSlug:   projectSlug,
+		Issue:         issue,
+		DisplayKey:    DisplayKey(projectSlug, issue.IssueNumber),
+		StatusLabel:   StatusLabel(issue.Status),
+		PriorityLabel: PriorityLabel(issue.Priority),
+		AssigneeLabel: assigneeLabel(issue.AssigneeID, members),
+		Labels:        labels,
+		CSRFToken:     middleware.CSRFToken(r.Context()),
+		CanEdit:       canEdit,
+		Statuses:      statusOptions(),
+		Priorities:    priorityOptions(),
+		Members:       memberOpts,
+	}, nil
 }
 
 func (h *Handler) redirectAfterMutation(w http.ResponseWriter, r *http.Request, workspaceSlug string, issue Issue) {

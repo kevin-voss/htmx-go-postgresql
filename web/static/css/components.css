@@ -49,6 +49,31 @@
     font-size: 0.875rem;
   }
 
+  .form-errors:empty {
+    display: none;
+  }
+
+  .htmx-indicator {
+    display: none;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+
+  .htmx-request .htmx-indicator,
+  .htmx-request.htmx-indicator {
+    display: inline;
+  }
+
+  .button:disabled,
+  .button[disabled] {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  #issue-list:not(:empty) + .issue-list-empty {
+    display: none;
+  }
+
   .issue-card {
     display: flex;
     flex-direction: column;

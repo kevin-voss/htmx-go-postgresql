@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-27` |
 | Milestone | M5 — HTMX experience |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-26 |
 | Unlocks | STEP-28 |
 | Estimated scope | L |
@@ -47,10 +47,10 @@ Make the issue UX feel dynamic: hx-post/hx-patch, hx-status:422, swap issue card
 
 ## Implementation checklist
 
-- [ ] Update issue forms with HTMX attrs
-- [ ] Return fragments from handlers
-- [ ] 422 fragment for validation
-- [ ] Manual UX verification
+- [x] Update issue forms with HTMX attrs
+- [x] Return fragments from handlers
+- [x] 422 fragment for validation
+- [x] Manual UX verification
 
 ## Files to create / modify
 
@@ -66,11 +66,11 @@ Error responses must be HTML fragments. Prefer explicit inheritance attributes i
 
 ## Acceptance criteria
 
-- [ ] Create issue via HTMX without full page reload
-- [ ] Invalid create returns 422 HTML into error target
-- [ ] Status change updates UI without full reload
-- [ ] Submit control disables while request in flight
-- [ ] Loading indicator visible during request
+- [x] Create issue via HTMX without full page reload
+- [x] Invalid create returns 422 HTML into error target
+- [x] Status change updates UI without full reload
+- [x] Submit control disables while request in flight
+- [x] Loading indicator visible during request
 
 ## Verification
 
@@ -100,17 +100,17 @@ STEP-27
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-28
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-28
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Fragment template names: ____. hx-status mapping documented.
+Fragment template names: `issue_form_errors`, `issue_list_item`, `issue_list_results`, `issue_status_panel` (plus existing `issue_card`). Create form uses `hx-status:422="target:#issue-form-errors swap:innerHTML"`; success appends `issue_list_item` into `#issue-list`. Status forms use `hx-patch` + card/`issue_status_panel` outerHTML swap. Filter form uses `hx-push-url="true"` into `#issue-list-results`. Loading via `hx-indicator` + `.htmx-indicator` CSS; submit disable via `hx-disable`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-28.

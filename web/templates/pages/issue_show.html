@@ -4,7 +4,7 @@
   <div class="page__main">
     <div class="stack">
       <p>
-        <code>{{.DisplayKey}}</code> · {{.StatusLabel}} · {{.PriorityLabel}} · {{.AssigneeLabel}}
+        <code>{{.DisplayKey}}</code> · {{.PriorityLabel}} · {{.AssigneeLabel}}
         {{if .Issue.Archived}} · Archived{{end}}
       </p>
       <h1>{{.Issue.Title}}</h1>
@@ -64,25 +64,14 @@
       <p>No description.</p>
       {{end}}
 
+      <div class="stack" style="max-inline-size: 32rem;">
+        <h2>Status</h2>
+        {{template "issue_status_panel" .}}
+      </div>
+
       {{if and .CanEdit (not .Issue.Archived)}}
       <div class="stack" style="max-inline-size: 32rem;">
         <h2>Workflow</h2>
-
-        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/status">
-          {{template "csrf_field" .CSRFToken}}
-          <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
-          <div class="form-field">
-            <label class="form-field__label" for="status">Status</label>
-            <select class="form-field__input" id="status" name="status">
-              {{range .Statuses}}
-              <option value="{{.Value}}"{{if eq $.Issue.Status .Value}} selected{{end}}>{{.Label}}</option>
-              {{end}}
-            </select>
-          </div>
-          <div class="cluster">
-            <button class="button" type="submit">Update status</button>
-          </div>
-        </form>
 
         <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/priority">
           {{template "csrf_field" .CSRFToken}}
