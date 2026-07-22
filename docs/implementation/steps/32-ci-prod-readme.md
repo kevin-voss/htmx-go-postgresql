@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-32` |
 | Milestone | M6 — Portfolio quality |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-31 |
 | Unlocks | — (project complete pending DoD walkthrough) |
 | Estimated scope | L |

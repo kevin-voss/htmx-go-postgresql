@@ -13,6 +13,7 @@ System design for Forgeboard’s modular monolith.
 | [database.md](database.md) | Tables, IDs, relationships |
 | [docker.md](docker.md) | Compose services |
 | [makefile.md](makefile.md) | Developer commands |
+| [threat-model.md](threat-model.md) | Sessions, CSRF, XSS, SQLi notes |
 
 ## Related
 

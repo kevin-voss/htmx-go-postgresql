@@ -1,0 +1,17 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+**/.DS_Store
+*.md
+!README.md
+docs/
+project-specs.md
+coverage.out
+coverage.html
+.cache/
+bin/
+dist/
+*.test
+*.out
