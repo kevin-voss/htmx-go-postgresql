@@ -8,8 +8,8 @@
         Project <code>/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}</code>
         in {{.WorkspaceName}}{{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.
       </p>
-      <p>Issues and board views will appear here in later steps.</p>
       <div class="cluster">
+        <a class="button button--primary" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">Issues</a>
         <a class="button" href="/w/{{.WorkspaceSlug}}/projects">All projects</a>
         <a class="button" href="/w/{{.WorkspaceSlug}}">Workspace</a>
         <a class="button" href="/app">Back to app</a>

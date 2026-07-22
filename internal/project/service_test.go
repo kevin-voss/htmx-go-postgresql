@@ -141,6 +141,18 @@ func (s *stubStore) GetByWorkspaceAndSlug(_ context.Context, workspaceID, slug s
 	return p, nil
 }
 
+func (s *stubStore) GetByID(_ context.Context, id string) (Project, error) {
+	s.ensure()
+	for _, bySlug := range s.byWorkspace {
+		for _, p := range bySlug {
+			if p.ID == id {
+				return p, nil
+			}
+		}
+	}
+	return Project{}, ErrNotFound
+}
+
 func TestCreateNormalizesAndPersists(t *testing.T) {
 	t.Parallel()
 

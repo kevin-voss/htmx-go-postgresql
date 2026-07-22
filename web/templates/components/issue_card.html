@@ -1,0 +1,11 @@
+{{define "issue_card"}}
+<article class="issue-card">
+  <p>
+    <a href="/w/{{.WorkspaceSlug}}/projects/{{.ProjectSlug}}/issues/{{.Issue.IssueNumber}}">
+      <code>{{.DisplayKey}}</code>
+      {{.Issue.Title}}
+    </a>
+  </p>
+  <p>{{.StatusLabel}}</p>
+</article>
+{{end}}

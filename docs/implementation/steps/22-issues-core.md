@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-22` |
 | Milestone | M4 — Projects & issues |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-21 |
 | Unlocks | STEP-23 |
 | Estimated scope | L |
@@ -48,10 +48,10 @@ Core issue entity with UUID id + per-project issue_number. Full-page flows first
 
 ## Implementation checklist
 
-- [ ] issues migration
-- [ ] issue service with number allocation
-- [ ] pages + forms
-- [ ] repository tests for numbering
+- [x] issues migration
+- [x] issue service with number allocation
+- [x] pages + forms
+- [x] repository tests for numbering
 
 ## Files to create / modify
 
@@ -68,11 +68,11 @@ Display like FORGE-1 can use project key + number; store integer issue_number.
 
 ## Acceptance criteria
 
-- [ ] Creating issues increments issue_number per project
-- [ ] Detail route works with issue number
-- [ ] List shows issues for the project only
-- [ ] Validation errors shown for empty title
-- [ ] Viewer can read; cannot create
+- [x] Creating issues increments issue_number per project
+- [x] Detail route works with issue number
+- [x] List shows issues for the project only
+- [x] Validation errors shown for empty title
+- [x] Viewer can read; cannot create
 
 ## Verification
 
@@ -101,17 +101,17 @@ STEP-22
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-23
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-23
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Issue number allocation strategy: ____. Default status: Backlog.
+Issue number allocation strategy: transaction locks `projects` row (`SELECT … FOR UPDATE`), then `MAX(issue_number)+1` for that `project_id`, insert with `UNIQUE (project_id, issue_number)`. Default status: `backlog` (label Backlog). Routes: `GET/POST /w/{ws}/projects/{ps}/issues`, detail `GET /w/{ws}/projects/{ps}/issues/{n}` and `GET /w/{ws}/issues/{n}` (workspace lookup 404s if number is ambiguous across projects). Viewer blocked from create via `RequireCanMutate`. Priority/assignee/archive deferred to STEP-23.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-23.

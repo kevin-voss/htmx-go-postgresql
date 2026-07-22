@@ -24,6 +24,7 @@ type Store interface {
 	Create(ctx context.Context, workspaceID, name, slug, createdBy string) (Project, error)
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]Project, error)
 	GetByWorkspaceAndSlug(ctx context.Context, workspaceID, slug string) (Project, error)
+	GetByID(ctx context.Context, id string) (Project, error)
 }
 
 // CreateInput is the public create-project form payload.
@@ -70,6 +71,15 @@ func (s *Service) GetByWorkspaceAndSlug(ctx context.Context, workspaceID, slug s
 		return Project{}, ErrNotFound
 	}
 	return s.store.GetByWorkspaceAndSlug(ctx, workspaceID, slug)
+}
+
+// GetByID returns a project, or ErrNotFound.
+func (s *Service) GetByID(ctx context.Context, id string) (Project, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return Project{}, ErrNotFound
+	}
+	return s.store.GetByID(ctx, id)
 }
 
 // Create validates and persists a project under a workspace.

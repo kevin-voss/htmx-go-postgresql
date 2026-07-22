@@ -1,0 +1,30 @@
+{{define "title"}}{{.DisplayKey}} — {{.Issue.Title}} — Forgeboard{{end}}
+{{define "content"}}
+<main class="page">
+  <div class="page__main">
+    <div class="stack">
+      <p><code>{{.DisplayKey}}</code> · {{.StatusLabel}}</p>
+      <h1>{{.Issue.Title}}</h1>
+      <p>
+        In project <a href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">{{.Project.Name}}</a>
+        ({{.WorkspaceName}}){{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.
+      </p>
+
+      {{if .Issue.Description}}
+      <div class="stack">
+        <h2>Description</h2>
+        <p>{{.Issue.Description}}</p>
+      </div>
+      {{else}}
+      <p>No description.</p>
+      {{end}}
+
+      <div class="cluster">
+        <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">All issues</a>
+        <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">Project</a>
+        <a class="button" href="/app">Back to app</a>
+      </div>
+    </div>
+  </div>
+</main>
+{{end}}

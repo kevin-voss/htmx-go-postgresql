@@ -117,3 +117,29 @@ func (r *Repository) GetByWorkspaceAndSlug(ctx context.Context, workspaceID, slu
 	}
 	return p, nil
 }
+
+// GetByID returns a project by id.
+func (r *Repository) GetByID(ctx context.Context, id string) (Project, error) {
+	const q = `
+		SELECT id, workspace_id, name, slug, created_by, created_at, updated_at
+		FROM projects
+		WHERE id = $1`
+
+	var p Project
+	err := r.db.QueryRow(ctx, q, id).Scan(
+		&p.ID,
+		&p.WorkspaceID,
+		&p.Name,
+		&p.Slug,
+		&p.CreatedBy,
+		&p.CreatedAt,
+		&p.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Project{}, ErrNotFound
+		}
+		return Project{}, fmt.Errorf("project: get by id: %w", err)
+	}
+	return p, nil
+}

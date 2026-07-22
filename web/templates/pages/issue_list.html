@@ -1,0 +1,70 @@
+{{define "title"}}Issues — {{.Project.Name}} — Forgeboard{{end}}
+{{define "content"}}
+<main class="page">
+  <div class="page__main">
+    <div class="stack">
+      <h1>Issues</h1>
+      <p>
+        Project <a href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">{{.Project.Name}}</a>
+        in {{.WorkspaceName}}{{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.
+      </p>
+
+      {{if .Cards}}
+      <ul class="stack">
+        {{range .Cards}}
+        <li>
+          {{template "issue_card" .}}
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p>No issues yet.</p>
+      {{end}}
+
+      {{if .CanCreate}}
+      <div class="stack" style="max-inline-size: 32rem;">
+        <h2>New issue</h2>
+        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues" novalidate>
+          {{template "csrf_field" .CSRFToken}}
+          <div class="form-field">
+            <label class="form-field__label" for="title">Title</label>
+            <input
+              class="form-field__input"
+              type="text"
+              id="title"
+              name="title"
+              required
+              maxlength="200"
+              value="{{.Form.Title}}"
+            >
+            {{with .Errors.Title}}
+            <p class="form-field__error">{{.}}</p>
+            {{end}}
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label" for="description">Description</label>
+            <textarea
+              class="form-field__input"
+              id="description"
+              name="description"
+              rows="4"
+            >{{.Form.Description}}</textarea>
+          </div>
+
+          <div class="cluster">
+            <button class="button button--primary" type="submit">Create issue</button>
+          </div>
+        </form>
+      </div>
+      {{end}}
+
+      <div class="cluster">
+        <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">Project</a>
+        <a class="button" href="/w/{{.WorkspaceSlug}}/projects">All projects</a>
+        <a class="button" href="/app">Back to app</a>
+      </div>
+    </div>
+  </div>
+</main>
+{{end}}

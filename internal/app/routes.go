@@ -17,6 +17,7 @@ func (a *Application) Routes() http.Handler {
 	a.Auth.Mount(mux)
 	a.Workspace.Mount(mux)
 	a.Project.Mount(mux)
+	a.Issue.Mount(mux)
 	a.MemberHTTP.Mount(mux)
 
 	staticRoot, err := fs.Sub(web.Static, "static")

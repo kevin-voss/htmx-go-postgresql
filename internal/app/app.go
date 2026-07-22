@@ -7,6 +7,7 @@ import (
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/issue"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
@@ -24,6 +25,7 @@ type Application struct {
 	Auth       *auth.Handler
 	Workspace  *workspace.Handler
 	Project    *project.Handler
+	Issue      *issue.Handler
 	Members    *member.Service
 	MemberHTTP *member.Handler
 }
@@ -67,8 +69,18 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 	)
 
 	projectRepo := project.NewRepository(db)
+	projectService := project.NewService(projectRepo)
 	projectHandler := project.NewHandler(
-		project.NewService(projectRepo),
+		projectService,
+		memberService,
+		renderer,
+		logger,
+	)
+
+	issueRepo := issue.NewRepository(db)
+	issueHandler := issue.NewHandler(
+		issue.NewService(issueRepo),
+		projectService,
 		memberService,
 		renderer,
 		logger,
@@ -82,6 +94,7 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		Auth:       authHandler,
 		Workspace:  workspaceHandler,
 		Project:    projectHandler,
+		Issue:      issueHandler,
 		Members:    memberService,
 		MemberHTTP: memberHandler,
 	}
