@@ -3,7 +3,10 @@
 <main class="page">
   <div class="page__main">
     <div class="stack">
-      <p><code>{{.DisplayKey}}</code> · {{.StatusLabel}}</p>
+      <p>
+        <code>{{.DisplayKey}}</code> · {{.StatusLabel}} · {{.PriorityLabel}} · {{.AssigneeLabel}}
+        {{if .Issue.Archived}} · Archived{{end}}
+      </p>
       <h1>{{.Issue.Title}}</h1>
       <p>
         In project <a href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">{{.Project.Name}}</a>
@@ -17,6 +20,66 @@
       </div>
       {{else}}
       <p>No description.</p>
+      {{end}}
+
+      {{if and .CanEdit (not .Issue.Archived)}}
+      <div class="stack" style="max-inline-size: 32rem;">
+        <h2>Workflow</h2>
+
+        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/status">
+          {{template "csrf_field" .CSRFToken}}
+          <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
+          <div class="form-field">
+            <label class="form-field__label" for="status">Status</label>
+            <select class="form-field__input" id="status" name="status">
+              {{range .Statuses}}
+              <option value="{{.Value}}"{{if eq $.Issue.Status .Value}} selected{{end}}>{{.Label}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="cluster">
+            <button class="button" type="submit">Update status</button>
+          </div>
+        </form>
+
+        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/priority">
+          {{template "csrf_field" .CSRFToken}}
+          <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
+          <div class="form-field">
+            <label class="form-field__label" for="priority">Priority</label>
+            <select class="form-field__input" id="priority" name="priority">
+              {{range .Priorities}}
+              <option value="{{.Value}}"{{if eq $.Issue.Priority .Value}} selected{{end}}>{{.Label}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="cluster">
+            <button class="button" type="submit">Update priority</button>
+          </div>
+        </form>
+
+        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/assignee">
+          {{template "csrf_field" .CSRFToken}}
+          <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
+          <div class="form-field">
+            <label class="form-field__label" for="assignee_id">Assignee</label>
+            <select class="form-field__input" id="assignee_id" name="assignee_id">
+              <option value=""{{if eq .Issue.AssigneeID ""}} selected{{end}}>Unassigned</option>
+              {{range .Members}}
+              <option value="{{.UserID}}"{{if eq $.Issue.AssigneeID .UserID}} selected{{end}}>{{.DisplayName}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="cluster">
+            <button class="button" type="submit">Update assignee</button>
+          </div>
+        </form>
+
+        <form method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/archive">
+          {{template "csrf_field" .CSRFToken}}
+          <button class="button button--danger" type="submit">Archive issue</button>
+        </form>
+      </div>
       {{end}}
 
       <div class="cluster">

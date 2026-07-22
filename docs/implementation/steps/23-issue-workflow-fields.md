@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-23` |
 | Milestone | M4 — Projects & issues |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-22 |
 | Unlocks | STEP-24 |
 | Estimated scope | M |
@@ -46,10 +46,10 @@ Implement workflow fields from issue-status flow. Prefer select/buttons. Full pa
 
 ## Implementation checklist
 
-- [ ] Update schema if needed
-- [ ] Handlers for status/priority/assignee/archive
-- [ ] UI controls on detail + list
-- [ ] authz tests
+- [x] Update schema if needed
+- [x] Handlers for status/priority/assignee/archive
+- [x] UI controls on detail + list
+- [x] authz tests
 
 ## Files to create / modify
 
@@ -65,11 +65,11 @@ No drag-and-drop JS.
 
 ## Acceptance criteria
 
-- [ ] Status can change among the four values
-- [ ] Priority can be set
-- [ ] Assignee can be set to a workspace member or cleared
-- [ ] Archived issues hidden from default lists
-- [ ] Viewer cannot change fields
+- [x] Status can change among the four values
+- [x] Priority can be set
+- [x] Assignee can be set to a workspace member or cleared
+- [x] Archived issues hidden from default lists
+- [x] Viewer cannot change fields
 
 ## Verification
 
@@ -98,17 +98,17 @@ STEP-23
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-24
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-24
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Priority enum: ____. Archive semantics: soft flag.
+Priority enum: `low` / `medium` / `high` / `urgent` (default `medium`). Archive semantics: soft flag (`archived BOOLEAN`, hidden from `ListByProject`). Routes: `PATCH|POST /w/{ws}/issues/{n}/status|priority|assignee`, `POST .../archive`. Viewer blocked via `RequireCanMutate`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-24.

@@ -106,6 +106,23 @@ func (s *Service) ListMembers(ctx context.Context, workspaceID string) ([]Member
 	return s.store.ListByWorkspace(ctx, workspaceID)
 }
 
+// IsMember reports whether userID belongs to workspaceID.
+func (s *Service) IsMember(ctx context.Context, workspaceID, userID string) (bool, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	userID = strings.TrimSpace(userID)
+	if workspaceID == "" || userID == "" {
+		return false, nil
+	}
+	_, err := s.store.GetByWorkspaceAndUser(ctx, workspaceID, userID)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // InviteErrors holds per-field validation messages for the invite form.
 type InviteErrors struct {
 	Email string

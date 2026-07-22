@@ -36,6 +36,7 @@ func (s *memoryStore) Create(_ context.Context, projectID, title, description, c
 		Title:       title,
 		Description: description,
 		Status:      StatusBacklog,
+		Priority:    PriorityMedium,
 		CreatedBy:   createdBy,
 	}
 	s.byProject[projectID] = append(s.byProject[projectID], issue)
@@ -45,7 +46,12 @@ func (s *memoryStore) Create(_ context.Context, projectID, title, description, c
 func (s *memoryStore) ListByProject(_ context.Context, projectID string) ([]Issue, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := append([]Issue{}, s.byProject[projectID]...)
+	var out []Issue
+	for _, issue := range s.byProject[projectID] {
+		if !issue.Archived {
+			out = append(out, issue)
+		}
+	}
 	if out == nil {
 		out = []Issue{}
 	}
@@ -80,6 +86,45 @@ func (s *memoryStore) GetByWorkspaceAndNumber(_ context.Context, _ string, issue
 	return matches[0], nil
 }
 
+func (s *memoryStore) UpdateStatus(_ context.Context, id, status string) (Issue, error) {
+	return s.update(id, func(issue *Issue) { issue.Status = status })
+}
+
+func (s *memoryStore) UpdatePriority(_ context.Context, id, priority string) (Issue, error) {
+	return s.update(id, func(issue *Issue) { issue.Priority = priority })
+}
+
+func (s *memoryStore) UpdateAssignee(_ context.Context, id, assigneeID string) (Issue, error) {
+	return s.update(id, func(issue *Issue) { issue.AssigneeID = assigneeID })
+}
+
+func (s *memoryStore) Archive(_ context.Context, id string) (Issue, error) {
+	return s.update(id, func(issue *Issue) { issue.Archived = true })
+}
+
+func (s *memoryStore) update(id string, apply func(*Issue)) (Issue, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for projectID, issues := range s.byProject {
+		for i := range issues {
+			if issues[i].ID == id {
+				apply(&issues[i])
+				s.byProject[projectID] = issues
+				return issues[i], nil
+			}
+		}
+	}
+	return Issue{}, ErrNotFound
+}
+
+type stubMembers struct {
+	members map[string]bool
+}
+
+func (s stubMembers) IsMember(_ context.Context, _, userID string) (bool, error) {
+	return s.members[userID], nil
+}
+
 func TestRepositoryNumberingIncrementsPerProject(t *testing.T) {
 	t.Parallel()
 
@@ -100,6 +145,9 @@ func TestRepositoryNumberingIncrementsPerProject(t *testing.T) {
 	}
 	if a1.Status != StatusBacklog {
 		t.Fatalf("a1 status = %q, want %q", a1.Status, StatusBacklog)
+	}
+	if a1.Priority != PriorityMedium {
+		t.Fatalf("a1 priority = %q, want %q", a1.Priority, PriorityMedium)
 	}
 
 	a2, errs, err := svc.Create(ctx, CreateInput{

@@ -2,8 +2,19 @@ package issue
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 )
+
+// ErrInvalidStatus is returned when a status value is not allowed.
+var ErrInvalidStatus = errors.New("issue: invalid status")
+
+// ErrInvalidPriority is returned when a priority value is not allowed.
+var ErrInvalidPriority = errors.New("issue: invalid priority")
+
+// ErrInvalidAssignee is returned when the assignee is not a workspace member.
+var ErrInvalidAssignee = errors.New("issue: invalid assignee")
 
 // Store is the persistence port used by Service.
 type Store interface {
@@ -11,11 +22,21 @@ type Store interface {
 	ListByProject(ctx context.Context, projectID string) ([]Issue, error)
 	GetByProjectAndNumber(ctx context.Context, projectID string, issueNumber int) (Issue, error)
 	GetByWorkspaceAndNumber(ctx context.Context, workspaceID string, issueNumber int) (Issue, error)
+	UpdateStatus(ctx context.Context, id, status string) (Issue, error)
+	UpdatePriority(ctx context.Context, id, priority string) (Issue, error)
+	UpdateAssignee(ctx context.Context, id, assigneeID string) (Issue, error)
+	Archive(ctx context.Context, id string) (Issue, error)
+}
+
+// MembershipChecker verifies a user belongs to a workspace (for assignee).
+type MembershipChecker interface {
+	IsMember(ctx context.Context, workspaceID, userID string) (bool, error)
 }
 
 // Service implements issue business rules.
 type Service struct {
-	store Store
+	store   Store
+	members MembershipChecker
 }
 
 // NewService constructs an issue service.
@@ -23,7 +44,13 @@ func NewService(store Store) *Service {
 	return &Service{store: store}
 }
 
-// ListByProject returns issues for a project ordered by number.
+// WithMembershipChecker attaches workspace membership checks for assignees.
+func (s *Service) WithMembershipChecker(members MembershipChecker) *Service {
+	s.members = members
+	return s
+}
+
+// ListByProject returns non-archived issues for a project ordered by number.
 func (s *Service) ListByProject(ctx context.Context, projectID string) ([]Issue, error) {
 	if projectID == "" {
 		return nil, nil
@@ -64,4 +91,78 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Issue, CreateErro
 		return Issue{}, CreateErrors{}, fmt.Errorf("issue: create: %w", err)
 	}
 	return issue, CreateErrors{}, nil
+}
+
+// UpdateStatus changes an issue's workflow status.
+func (s *Service) UpdateStatus(ctx context.Context, workspaceID string, issueNumber int, status string) (Issue, error) {
+	status = strings.TrimSpace(status)
+	if !ValidStatus(status) {
+		return Issue{}, ErrInvalidStatus
+	}
+	issue, err := s.GetByWorkspaceAndNumber(ctx, workspaceID, issueNumber)
+	if err != nil {
+		return Issue{}, err
+	}
+	updated, err := s.store.UpdateStatus(ctx, issue.ID, status)
+	if err != nil {
+		return Issue{}, fmt.Errorf("issue: update status: %w", err)
+	}
+	return updated, nil
+}
+
+// UpdatePriority changes an issue's priority.
+func (s *Service) UpdatePriority(ctx context.Context, workspaceID string, issueNumber int, priority string) (Issue, error) {
+	priority = strings.TrimSpace(priority)
+	if !ValidPriority(priority) {
+		return Issue{}, ErrInvalidPriority
+	}
+	issue, err := s.GetByWorkspaceAndNumber(ctx, workspaceID, issueNumber)
+	if err != nil {
+		return Issue{}, err
+	}
+	updated, err := s.store.UpdatePriority(ctx, issue.ID, priority)
+	if err != nil {
+		return Issue{}, fmt.Errorf("issue: update priority: %w", err)
+	}
+	return updated, nil
+}
+
+// UpdateAssignee sets or clears the assignee (must be a workspace member when set).
+func (s *Service) UpdateAssignee(ctx context.Context, workspaceID string, issueNumber int, assigneeID string) (Issue, error) {
+	assigneeID = strings.TrimSpace(assigneeID)
+	if assigneeID != "" {
+		if s.members == nil {
+			return Issue{}, fmt.Errorf("issue: update assignee: membership checker not configured")
+		}
+		ok, err := s.members.IsMember(ctx, workspaceID, assigneeID)
+		if err != nil {
+			return Issue{}, fmt.Errorf("issue: update assignee: %w", err)
+		}
+		if !ok {
+			return Issue{}, ErrInvalidAssignee
+		}
+	}
+
+	issue, err := s.GetByWorkspaceAndNumber(ctx, workspaceID, issueNumber)
+	if err != nil {
+		return Issue{}, err
+	}
+	updated, err := s.store.UpdateAssignee(ctx, issue.ID, assigneeID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("issue: update assignee: %w", err)
+	}
+	return updated, nil
+}
+
+// Archive soft-archives an issue so it is hidden from default lists.
+func (s *Service) Archive(ctx context.Context, workspaceID string, issueNumber int) (Issue, error) {
+	issue, err := s.GetByWorkspaceAndNumber(ctx, workspaceID, issueNumber)
+	if err != nil {
+		return Issue{}, err
+	}
+	updated, err := s.store.Archive(ctx, issue.ID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("issue: archive: %w", err)
+	}
+	return updated, nil
 }

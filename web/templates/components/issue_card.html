@@ -1,11 +1,41 @@
 {{define "issue_card"}}
 <article class="issue-card">
-  <p>
-    <a href="/w/{{.WorkspaceSlug}}/projects/{{.ProjectSlug}}/issues/{{.Issue.IssueNumber}}">
-      <code>{{.DisplayKey}}</code>
-      {{.Issue.Title}}
-    </a>
-  </p>
-  <p>{{.StatusLabel}}</p>
+  <div class="issue-card__header">
+    <p class="issue-card__title">
+      <a href="/w/{{.WorkspaceSlug}}/projects/{{.ProjectSlug}}/issues/{{.Issue.IssueNumber}}">
+        <code>{{.DisplayKey}}</code>
+        {{.Issue.Title}}
+      </a>
+    </p>
+    <p class="issue-card__meta">{{.StatusLabel}} · {{.PriorityLabel}} · {{.AssigneeLabel}}</p>
+  </div>
+
+  {{if .CanEdit}}
+  <div class="cluster">
+    <form class="cluster" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/status">
+      {{template "csrf_field" .CSRFToken}}
+      <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.ProjectSlug}}/issues">
+      <label class="u-sr-only" for="status-{{.Issue.IssueNumber}}">Status</label>
+      <select class="form-field__input" id="status-{{.Issue.IssueNumber}}" name="status">
+        {{range .Statuses}}
+        <option value="{{.Value}}"{{if eq $.Issue.Status .Value}} selected{{end}}>{{.Label}}</option>
+        {{end}}
+      </select>
+      <button class="button" type="submit">Set status</button>
+    </form>
+
+    <form class="cluster" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/priority">
+      {{template "csrf_field" .CSRFToken}}
+      <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.ProjectSlug}}/issues">
+      <label class="u-sr-only" for="priority-{{.Issue.IssueNumber}}">Priority</label>
+      <select class="form-field__input" id="priority-{{.Issue.IssueNumber}}" name="priority">
+        {{range .Priorities}}
+        <option value="{{.Value}}"{{if eq $.Issue.Priority .Value}} selected{{end}}>{{.Label}}</option>
+        {{end}}
+      </select>
+      <button class="button" type="submit">Set priority</button>
+    </form>
+  </div>
+  {{end}}
 </article>
 {{end}}

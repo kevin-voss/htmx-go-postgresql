@@ -22,6 +22,9 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
+const issueColumns = `id, project_id, issue_number, title, description, status, priority,
+	COALESCE(assignee_id::text, ''), archived, created_by, created_at, updated_at`
+
 // Create inserts an issue with the next per-project issue_number.
 // Allocation locks the project row so concurrent creates cannot collide.
 func (r *Repository) Create(ctx context.Context, projectID, title, description, createdBy string) (Issue, error) {
@@ -49,19 +52,22 @@ func (r *Repository) Create(ctx context.Context, projectID, title, description, 
 		return Issue{}, fmt.Errorf("issue: next number: %w", err)
 	}
 
-	const insert = `
-		INSERT INTO issues (project_id, issue_number, title, description, status, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, project_id, issue_number, title, description, status, created_by, created_at, updated_at`
+	insert := `
+		INSERT INTO issues (project_id, issue_number, title, description, status, priority, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING ` + issueColumns
 
 	var issue Issue
-	err = tx.QueryRow(ctx, insert, projectID, next, title, description, StatusBacklog, createdBy).Scan(
+	err = tx.QueryRow(ctx, insert, projectID, next, title, description, StatusBacklog, PriorityMedium, createdBy).Scan(
 		&issue.ID,
 		&issue.ProjectID,
 		&issue.IssueNumber,
 		&issue.Title,
 		&issue.Description,
 		&issue.Status,
+		&issue.Priority,
+		&issue.AssigneeID,
+		&issue.Archived,
 		&issue.CreatedBy,
 		&issue.CreatedAt,
 		&issue.UpdatedAt,
@@ -76,12 +82,12 @@ func (r *Repository) Create(ctx context.Context, projectID, title, description, 
 	return issue, nil
 }
 
-// ListByProject returns issues for a project ordered by issue_number ascending.
+// ListByProject returns non-archived issues for a project ordered by issue_number ascending.
 func (r *Repository) ListByProject(ctx context.Context, projectID string) ([]Issue, error) {
-	const q = `
-		SELECT id, project_id, issue_number, title, description, status, created_by, created_at, updated_at
+	q := `
+		SELECT ` + issueColumns + `
 		FROM issues
-		WHERE project_id = $1
+		WHERE project_id = $1 AND archived = false
 		ORDER BY issue_number ASC`
 
 	rows, err := r.db.Query(ctx, q, projectID)
@@ -92,18 +98,8 @@ func (r *Repository) ListByProject(ctx context.Context, projectID string) ([]Iss
 
 	var issues []Issue
 	for rows.Next() {
-		var issue Issue
-		if err := rows.Scan(
-			&issue.ID,
-			&issue.ProjectID,
-			&issue.IssueNumber,
-			&issue.Title,
-			&issue.Description,
-			&issue.Status,
-			&issue.CreatedBy,
-			&issue.CreatedAt,
-			&issue.UpdatedAt,
-		); err != nil {
+		issue, err := scanIssue(rows)
+		if err != nil {
 			return nil, fmt.Errorf("issue: list by project scan: %w", err)
 		}
 		issues = append(issues, issue)
@@ -119,8 +115,8 @@ func (r *Repository) ListByProject(ctx context.Context, projectID string) ([]Iss
 
 // GetByProjectAndNumber returns an issue by project id and issue number.
 func (r *Repository) GetByProjectAndNumber(ctx context.Context, projectID string, issueNumber int) (Issue, error) {
-	const q = `
-		SELECT id, project_id, issue_number, title, description, status, created_by, created_at, updated_at
+	q := `
+		SELECT ` + issueColumns + `
 		FROM issues
 		WHERE project_id = $1 AND issue_number = $2`
 
@@ -132,6 +128,9 @@ func (r *Repository) GetByProjectAndNumber(ctx context.Context, projectID string
 		&issue.Title,
 		&issue.Description,
 		&issue.Status,
+		&issue.Priority,
+		&issue.AssigneeID,
+		&issue.Archived,
 		&issue.CreatedBy,
 		&issue.CreatedAt,
 		&issue.UpdatedAt,
@@ -148,9 +147,9 @@ func (r *Repository) GetByProjectAndNumber(ctx context.Context, projectID string
 // GetByWorkspaceAndNumber returns an issue by workspace id and issue number.
 // When multiple projects share the same number, returns ErrNotFound (ambiguous).
 func (r *Repository) GetByWorkspaceAndNumber(ctx context.Context, workspaceID string, issueNumber int) (Issue, error) {
-	const q = `
-		SELECT i.id, i.project_id, i.issue_number, i.title, i.description, i.status,
-			i.created_by, i.created_at, i.updated_at
+	q := `
+		SELECT i.id, i.project_id, i.issue_number, i.title, i.description, i.status, i.priority,
+			COALESCE(i.assignee_id::text, ''), i.archived, i.created_by, i.created_at, i.updated_at
 		FROM issues i
 		INNER JOIN projects p ON p.id = i.project_id
 		WHERE p.workspace_id = $1 AND i.issue_number = $2
@@ -164,18 +163,8 @@ func (r *Repository) GetByWorkspaceAndNumber(ctx context.Context, workspaceID st
 
 	var matches []Issue
 	for rows.Next() {
-		var issue Issue
-		if err := rows.Scan(
-			&issue.ID,
-			&issue.ProjectID,
-			&issue.IssueNumber,
-			&issue.Title,
-			&issue.Description,
-			&issue.Status,
-			&issue.CreatedBy,
-			&issue.CreatedAt,
-			&issue.UpdatedAt,
-		); err != nil {
+		issue, err := scanIssue(rows)
+		if err != nil {
 			return Issue{}, fmt.Errorf("issue: get by workspace and number scan: %w", err)
 		}
 		matches = append(matches, issue)
@@ -187,4 +176,95 @@ func (r *Repository) GetByWorkspaceAndNumber(ctx context.Context, workspaceID st
 		return Issue{}, ErrNotFound
 	}
 	return matches[0], nil
+}
+
+// UpdateStatus sets the status of an issue by id.
+func (r *Repository) UpdateStatus(ctx context.Context, id, status string) (Issue, error) {
+	return r.updateField(ctx, id, `status = $2`, status)
+}
+
+// UpdatePriority sets the priority of an issue by id.
+func (r *Repository) UpdatePriority(ctx context.Context, id, priority string) (Issue, error) {
+	return r.updateField(ctx, id, `priority = $2`, priority)
+}
+
+// UpdateAssignee sets or clears the assignee of an issue by id.
+// Empty assigneeID clears the assignment.
+func (r *Repository) UpdateAssignee(ctx context.Context, id, assigneeID string) (Issue, error) {
+	if assigneeID == "" {
+		q := `
+			UPDATE issues
+			SET assignee_id = NULL, updated_at = now()
+			WHERE id = $1
+			RETURNING ` + issueColumns
+		return r.scanOne(ctx, q, id)
+	}
+	return r.updateField(ctx, id, `assignee_id = $2::uuid`, assigneeID)
+}
+
+// Archive marks an issue as archived (soft flag).
+func (r *Repository) Archive(ctx context.Context, id string) (Issue, error) {
+	q := `
+		UPDATE issues
+		SET archived = true, updated_at = now()
+		WHERE id = $1
+		RETURNING ` + issueColumns
+	return r.scanOne(ctx, q, id)
+}
+
+func (r *Repository) updateField(ctx context.Context, id, setExpr, value string) (Issue, error) {
+	q := `
+		UPDATE issues
+		SET ` + setExpr + `, updated_at = now()
+		WHERE id = $1
+		RETURNING ` + issueColumns
+	return r.scanOne(ctx, q, id, value)
+}
+
+func (r *Repository) scanOne(ctx context.Context, q string, args ...any) (Issue, error) {
+	var issue Issue
+	err := r.db.QueryRow(ctx, q, args...).Scan(
+		&issue.ID,
+		&issue.ProjectID,
+		&issue.IssueNumber,
+		&issue.Title,
+		&issue.Description,
+		&issue.Status,
+		&issue.Priority,
+		&issue.AssigneeID,
+		&issue.Archived,
+		&issue.CreatedBy,
+		&issue.CreatedAt,
+		&issue.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Issue{}, ErrNotFound
+		}
+		return Issue{}, fmt.Errorf("issue: update: %w", err)
+	}
+	return issue, nil
+}
+
+type scannable interface {
+	Scan(dest ...any) error
+}
+
+func scanIssue(row scannable) (Issue, error) {
+	var issue Issue
+	err := row.Scan(
+		&issue.ID,
+		&issue.ProjectID,
+		&issue.IssueNumber,
+		&issue.Title,
+		&issue.Description,
+		&issue.Status,
+		&issue.Priority,
+		&issue.AssigneeID,
+		&issue.Archived,
+		&issue.CreatedBy,
+		&issue.CreatedAt,
+		&issue.UpdatedAt,
+	)
+	return issue, err
 }
