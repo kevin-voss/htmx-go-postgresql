@@ -283,12 +283,15 @@ func (s *handlerMemoryStore) Create(_ context.Context, projectID, title, descrip
 	return iss, nil
 }
 
-func (s *handlerMemoryStore) ListByProject(_ context.Context, projectID string) ([]issue.Issue, error) {
+func (s *handlerMemoryStore) ListByProject(_ context.Context, projectID string, filter issue.ListFilter) ([]issue.Issue, error) {
 	var out []issue.Issue
 	for _, iss := range s.byProject[projectID] {
-		if !iss.Archived {
-			out = append(out, iss)
+		if iss.Archived {
+			continue
 		}
+		// Handler tests do not exercise filters; empty filter returns all active issues.
+		_ = filter
+		out = append(out, iss)
 	}
 	if out == nil {
 		out = []issue.Issue{}

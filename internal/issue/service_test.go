@@ -193,7 +193,7 @@ func TestArchiveHidesFromDefaultList(t *testing.T) {
 		t.Fatal("want archived=true")
 	}
 
-	listed, err := svc.ListByProject(context.Background(), "proj-a")
+	listed, err := svc.ListByProject(context.Background(), "proj-a", ListFilter{})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -83,14 +84,56 @@ func (r *Repository) Create(ctx context.Context, projectID, title, description, 
 }
 
 // ListByProject returns non-archived issues for a project ordered by issue_number ascending.
-func (r *Repository) ListByProject(ctx context.Context, projectID string) ([]Issue, error) {
+// Optional filter fields combine with AND; empty fields are ignored.
+func (r *Repository) ListByProject(ctx context.Context, projectID string, filter ListFilter) ([]Issue, error) {
+	filter = NormalizeListFilter(filter)
+
+	args := []any{projectID}
+	conditions := []string{"project_id = $1", "archived = false"}
+	n := 2
+
+	if filter.Status != "" {
+		conditions = append(conditions, fmt.Sprintf("status = $%d", n))
+		args = append(args, filter.Status)
+		n++
+	}
+	if filter.Priority != "" {
+		conditions = append(conditions, fmt.Sprintf("priority = $%d", n))
+		args = append(args, filter.Priority)
+		n++
+	}
+	if filter.AssigneeID != "" {
+		if filter.AssigneeID == "none" {
+			conditions = append(conditions, "assignee_id IS NULL")
+		} else {
+			conditions = append(conditions, fmt.Sprintf("assignee_id = $%d::uuid", n))
+			args = append(args, filter.AssigneeID)
+			n++
+		}
+	}
+	if filter.LabelID != "" {
+		conditions = append(conditions, fmt.Sprintf(`EXISTS (
+			SELECT 1 FROM issue_labels il
+			WHERE il.issue_id = issues.id AND il.label_id = $%d::uuid
+		)`, n))
+		args = append(args, filter.LabelID)
+		n++
+	}
+	if filter.Query != "" {
+		pattern := "%" + escapeLike(filter.Query) + "%"
+		conditions = append(conditions, fmt.Sprintf(
+			`(title ILIKE $%d ESCAPE '\' OR description ILIKE $%d ESCAPE '\')`, n, n,
+		))
+		args = append(args, pattern)
+	}
+
 	q := `
 		SELECT ` + issueColumns + `
 		FROM issues
-		WHERE project_id = $1 AND archived = false
+		WHERE ` + strings.Join(conditions, " AND ") + `
 		ORDER BY issue_number ASC`
 
-	rows, err := r.db.Query(ctx, q, projectID)
+	rows, err := r.db.Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("issue: list by project: %w", err)
 	}

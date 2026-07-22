@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-25` |
 | Milestone | M4 — Projects & issues |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-24 |
 | Unlocks | STEP-26 |
 | Estimated scope | M |
@@ -44,9 +44,9 @@ Server-rendered filtered lists. HTMX can enhance later; full page query-param fi
 
 ## Implementation checklist
 
-- [ ] Implement filters in repo
-- [ ] Wire UI
-- [ ] Tests for filter combinations
+- [x] Implement filters in repo
+- [x] Wire UI
+- [x] Tests for filter combinations
 
 ## Files to create / modify
 
@@ -61,11 +61,11 @@ Keep SQL readable; watch injection — use parameterized queries only.
 
 ## Acceptance criteria
 
-- [ ] Filter by status works
-- [ ] Filter by assignee works
-- [ ] Text search matches title (and description if scoped)
-- [ ] Filters combine with AND semantics
-- [ ] No SQL injection via params
+- [x] Filter by status works
+- [x] Filter by assignee works
+- [x] Text search matches title (and description if scoped)
+- [x] Filters combine with AND semantics
+- [x] No SQL injection via params
 
 ## Verification
 
@@ -94,7 +94,7 @@ STEP-25
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [x] Update `docs/implementation/STATUS.md` → `done`
 - [ ] Stage this step’s files + `STATUS.md`
 - [ ] Commit with the subject and body above
 - [ ] `git push -u origin HEAD`
@@ -105,6 +105,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-M4 complete. Supported query params: ____.
+M4 complete. Supported query params: `q`, `status`, `priority`, `assignee` (`none` = unassigned), `label`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-26.

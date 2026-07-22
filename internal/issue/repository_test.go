@@ -9,13 +9,17 @@ import (
 
 // memoryStore mirrors Repository numbering: next = max(issue_number)+1 per project.
 type memoryStore struct {
-	mu        sync.Mutex
-	byProject map[string][]Issue
-	seq       int
+	mu            sync.Mutex
+	byProject     map[string][]Issue
+	labelsByIssue map[string]map[string]bool // issueID -> labelID set
+	seq           int
 }
 
 func newMemoryStore() *memoryStore {
-	return &memoryStore{byProject: map[string][]Issue{}}
+	return &memoryStore{
+		byProject:     map[string][]Issue{},
+		labelsByIssue: map[string]map[string]bool{},
+	}
 }
 
 func (s *memoryStore) Create(_ context.Context, projectID, title, description, createdBy string) (Issue, error) {
@@ -43,12 +47,13 @@ func (s *memoryStore) Create(_ context.Context, projectID, title, description, c
 	return issue, nil
 }
 
-func (s *memoryStore) ListByProject(_ context.Context, projectID string) ([]Issue, error) {
+func (s *memoryStore) ListByProject(_ context.Context, projectID string, filter ListFilter) ([]Issue, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	filter = NormalizeListFilter(filter)
 	var out []Issue
 	for _, issue := range s.byProject[projectID] {
-		if !issue.Archived {
+		if matchesListFilter(issue, s.labelsByIssue[issue.ID], filter) {
 			out = append(out, issue)
 		}
 	}
@@ -56,6 +61,16 @@ func (s *memoryStore) ListByProject(_ context.Context, projectID string) ([]Issu
 		out = []Issue{}
 	}
 	return out, nil
+}
+
+func (s *memoryStore) setLabels(issueID string, labelIDs ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	set := map[string]bool{}
+	for _, id := range labelIDs {
+		set[id] = true
+	}
+	s.labelsByIssue[issueID] = set
 }
 
 func (s *memoryStore) GetByProjectAndNumber(_ context.Context, projectID string, issueNumber int) (Issue, error) {
@@ -174,7 +189,7 @@ func TestRepositoryNumberingIncrementsPerProject(t *testing.T) {
 		t.Fatalf("b1 number = %d, want 1 (independent per project)", b1.IssueNumber)
 	}
 
-	listed, err := svc.ListByProject(ctx, "proj-a")
+	listed, err := svc.ListByProject(ctx, "proj-a", ListFilter{})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -220,7 +235,7 @@ func TestRepositoryNumberingConcurrentPerProject(t *testing.T) {
 		t.Fatalf("concurrent create: %v", err)
 	}
 
-	listed, err := svc.ListByProject(ctx, "proj-concurrent")
+	listed, err := svc.ListByProject(ctx, "proj-concurrent", ListFilter{})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}

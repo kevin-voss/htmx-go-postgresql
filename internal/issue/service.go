@@ -19,7 +19,7 @@ var ErrInvalidAssignee = errors.New("issue: invalid assignee")
 // Store is the persistence port used by Service.
 type Store interface {
 	Create(ctx context.Context, projectID, title, description, createdBy string) (Issue, error)
-	ListByProject(ctx context.Context, projectID string) ([]Issue, error)
+	ListByProject(ctx context.Context, projectID string, filter ListFilter) ([]Issue, error)
 	GetByProjectAndNumber(ctx context.Context, projectID string, issueNumber int) (Issue, error)
 	GetByWorkspaceAndNumber(ctx context.Context, workspaceID string, issueNumber int) (Issue, error)
 	UpdateStatus(ctx context.Context, id, status string) (Issue, error)
@@ -70,11 +70,12 @@ func (s *Service) WithLabelStore(labels LabelStore) *Service {
 }
 
 // ListByProject returns non-archived issues for a project ordered by number.
-func (s *Service) ListByProject(ctx context.Context, projectID string) ([]Issue, error) {
+// Optional filter fields combine with AND; empty fields are ignored.
+func (s *Service) ListByProject(ctx context.Context, projectID string, filter ListFilter) ([]Issue, error) {
 	if projectID == "" {
 		return nil, nil
 	}
-	return s.store.ListByProject(ctx, projectID)
+	return s.store.ListByProject(ctx, projectID, NormalizeListFilter(filter))
 }
 
 // GetByProjectAndNumber returns an issue, or ErrNotFound.

@@ -155,6 +155,9 @@ type listPageData struct {
 	Statuses      []optionData
 	Priorities    []optionData
 	Members       []memberOption
+	Labels        []Label
+	Filter        ListFilter
+	FilterActive  bool
 }
 
 type createFormData struct {
@@ -253,7 +256,8 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issues, err := h.service.ListByProject(r.Context(), p.ID)
+	filter := listFilterFromRequest(r)
+	issues, err := h.service.ListByProject(r.Context(), p.ID, filter)
 	if err != nil {
 		h.logger.Error("list issues failed", "err", err, "project_id", p.ID)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -263,6 +267,13 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	members, memberOpts, err := h.loadMembers(r, ws.ID)
 	if err != nil {
 		h.logger.Error("list members failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	workspaceLabels, err := h.service.ListLabels(r.Context(), ws.ID)
+	if err != nil {
+		h.logger.Error("list labels failed", "err", err, "workspace_id", ws.ID)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -289,6 +300,9 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		Statuses:      statusOptions(),
 		Priorities:    priorityOptions(),
 		Members:       memberOpts,
+		Labels:        workspaceLabels,
+		Filter:        filter,
+		FilterActive:  filter.Active(),
 	})
 }
 
@@ -334,7 +348,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if fieldErrs.Any() {
-		issues, listErr := h.service.ListByProject(r.Context(), p.ID)
+		issues, listErr := h.service.ListByProject(r.Context(), p.ID, ListFilter{})
 		if listErr != nil {
 			h.logger.Error("list issues failed", "err", listErr, "project_id", p.ID)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -343,6 +357,12 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		members, memberOpts, memErr := h.loadMembers(r, ws.ID)
 		if memErr != nil {
 			h.logger.Error("list members failed", "err", memErr, "workspace_id", ws.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		workspaceLabels, labelListErr := h.service.ListLabels(r.Context(), ws.ID)
+		if labelListErr != nil {
+			h.logger.Error("list labels failed", "err", labelListErr, "workspace_id", ws.ID)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -372,6 +392,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 			Statuses:   statusOptions(),
 			Priorities: priorityOptions(),
 			Members:    memberOpts,
+			Labels:     workspaceLabels,
 		})
 		return
 	}
@@ -854,6 +875,17 @@ func (h *Handler) loadMembers(r *http.Request, workspaceID string) ([]member.Mem
 		opts = append(opts, memberOption{UserID: m.UserID, DisplayName: m.DisplayName})
 	}
 	return members, opts, nil
+}
+
+func listFilterFromRequest(r *http.Request) ListFilter {
+	q := r.URL.Query()
+	return NormalizeListFilter(ListFilter{
+		Status:     q.Get("status"),
+		Priority:   q.Get("priority"),
+		AssigneeID: q.Get("assignee"),
+		LabelID:    q.Get("label"),
+		Query:      q.Get("q"),
+	})
 }
 
 func (h *Handler) labelsByIssueIDs(r *http.Request, issues []Issue) (map[string][]Label, error) {
