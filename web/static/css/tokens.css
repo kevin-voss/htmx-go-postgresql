@@ -1,0 +1,53 @@
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    --color-background: light-dark(
+      oklch(98% 0.005 250),
+      oklch(18% 0.015 250)
+    );
+
+    --color-surface: light-dark(
+      oklch(100% 0 0),
+      oklch(23% 0.015 250)
+    );
+
+    --color-text: light-dark(
+      oklch(22% 0.015 250),
+      oklch(94% 0.005 250)
+    );
+
+    --color-text-muted: light-dark(
+      oklch(45% 0.02 250),
+      oklch(75% 0.01 250)
+    );
+
+    --color-primary: oklch(60% 0.18 255);
+    --color-primary-text: oklch(99% 0.01 255);
+    --color-danger: oklch(55% 0.2 25);
+
+    --color-border: color-mix(
+      in oklch,
+      var(--color-text) 15%,
+      transparent
+    );
+
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+
+    --radius-small: 0.4rem;
+    --radius-medium: 0.7rem;
+    --radius-large: 1rem;
+
+    --font-sans: ui-sans-serif, system-ui, sans-serif;
+    --font-mono: ui-monospace, monospace;
+
+    --measure: 65ch;
+    --content-width: 72rem;
+  }
+}
