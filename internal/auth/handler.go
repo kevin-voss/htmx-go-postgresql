@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 )
 
@@ -38,9 +39,15 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("POST /logout", h.logout)
 }
 
+// LoadSessionMiddleware returns middleware that populates session/user context.
+func (h *Handler) LoadSessionMiddleware() middleware.Middleware {
+	return LoadSession(h.service, h.cookieSecure, h.logger)
+}
+
 type registerPageData struct {
-	Form   registerFormData
-	Errors RegisterErrors
+	CSRFToken string
+	Form      registerFormData
+	Errors    RegisterErrors
 }
 
 type registerFormData struct {
@@ -50,8 +57,9 @@ type registerFormData struct {
 }
 
 type loginPageData struct {
-	Form  loginFormData
-	Error string
+	CSRFToken string
+	Form      loginFormData
+	Error     string
 }
 
 type loginFormData struct {
@@ -59,7 +67,9 @@ type loginFormData struct {
 }
 
 func (h *Handler) showRegister(w http.ResponseWriter, r *http.Request) {
-	h.renderRegister(w, http.StatusOK, registerPageData{})
+	h.renderRegister(w, http.StatusOK, registerPageData{
+		CSRFToken: middleware.CSRFToken(r.Context()),
+	})
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +94,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	}
 	if fieldErrs.Any() {
 		h.renderRegister(w, http.StatusUnprocessableEntity, registerPageData{
+			CSRFToken: middleware.CSRFToken(r.Context()),
 			Form: registerFormData{
 				DisplayName: strings.TrimSpace(in.DisplayName),
 				Email:       strings.ToLower(strings.TrimSpace(in.Email)),
@@ -111,7 +122,9 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
-	h.renderLogin(w, http.StatusOK, loginPageData{})
+	h.renderLogin(w, http.StatusOK, loginPageData{
+		CSRFToken: middleware.CSRFToken(r.Context()),
+	})
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
@@ -130,8 +143,9 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
 			h.renderLogin(w, http.StatusUnprocessableEntity, loginPageData{
-				Form:  loginFormData{Email: strings.ToLower(strings.TrimSpace(email))},
-				Error: invalidCredentialsMessage,
+				CSRFToken: middleware.CSRFToken(r.Context()),
+				Form:      loginFormData{Email: strings.ToLower(strings.TrimSpace(email))},
+				Error:     invalidCredentialsMessage,
 			})
 			return
 		}

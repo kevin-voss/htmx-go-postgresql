@@ -80,6 +80,32 @@ func (r *Repository) GetByEmail(ctx context.Context, email string) (User, error)
 	return u, nil
 }
 
+// GetByID returns the user with the given id.
+func (r *Repository) GetByID(ctx context.Context, id string) (User, error) {
+	const q = `
+		SELECT id, email, display_name, password_hash, email_verified_at, created_at, updated_at
+		FROM users
+		WHERE id = $1`
+
+	var u User
+	err := r.db.QueryRow(ctx, q, id).Scan(
+		&u.ID,
+		&u.Email,
+		&u.DisplayName,
+		&u.PasswordHash,
+		&u.EmailVerifiedAt,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, ErrNotFound
+		}
+		return User{}, fmt.Errorf("auth: get user by id: %w", err)
+	}
+	return u, nil
+}
+
 // CreateSession inserts a session row (token_hash only — never the raw token).
 func (r *Repository) CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error) {
 	const q = `

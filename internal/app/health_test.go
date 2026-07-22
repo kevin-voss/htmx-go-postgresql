@@ -5,10 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/app"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 )
 
 func TestHealth(t *testing.T) {
@@ -41,7 +43,11 @@ func TestHealthMethodNotAllowed(t *testing.T) {
 		nil,
 	)
 
-	req := httptest.NewRequest(http.MethodPost, "/health", nil)
+	csrfCookie, csrfToken := fetchCSRF(t, application)
+	form := middleware.CSRFFieldName + "=" + csrfToken
+	req := httptest.NewRequest(http.MethodPost, "/health", strings.NewReader(form))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(csrfCookie)
 	rr := httptest.NewRecorder()
 	application.Routes().ServeHTTP(rr, req)
 

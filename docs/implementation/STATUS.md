@@ -16,7 +16,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 10 | Argon2id password service | `done` | |
 | 11 | Users & registration | `done` | |
 | 12 | Sessions, login, logout | `done` | |
-| 13 | Auth middleware & CSRF | `todo` | |
+| 13 | Auth middleware & CSRF | `done` | |
 | 14 | Mail & email verification | `todo` | |
 | 15 | Password reset & rate limit | `todo` | |
 | 16 | Account sessions | `todo` | |

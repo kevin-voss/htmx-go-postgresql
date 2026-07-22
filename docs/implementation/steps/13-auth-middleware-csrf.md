@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-13` |
 | Milestone | M2 — Authentication |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-12 |
 | Unlocks | STEP-14 |
 | Estimated scope | M |
@@ -108,6 +108,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Context key for user: ____. CSRF field name: ____.
+Context helpers: `auth.UserFromContext` / `auth.SessionFromContext`. CSRF field name: `csrf_token` (cookie `forgeboard_csrf` in dev). Unauthenticated full-page requests redirect to `/login` (302); HTMX requests get 401.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-14.

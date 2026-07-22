@@ -19,6 +19,7 @@ const (
 type UserStore interface {
 	Create(ctx context.Context, email, displayName, passwordHash string) (User, error)
 	GetByEmail(ctx context.Context, email string) (User, error)
+	GetByID(ctx context.Context, id string) (User, error)
 }
 
 // RegisterInput is the public registration form payload.

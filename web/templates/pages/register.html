@@ -7,6 +7,7 @@
       <p>Register for Forgeboard. You will be signed in after creating your account.</p>
 
       <form class="stack" method="post" action="/register" novalidate>
+        {{template "csrf_field" .CSRFToken}}
         <div class="form-field">
           <label class="form-field__label" for="display_name">Display name</label>
           <input

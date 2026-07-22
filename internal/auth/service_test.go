@@ -104,6 +104,15 @@ func (s *stubUserStore) GetByEmail(_ context.Context, email string) (User, error
 	return User{}, ErrNotFound
 }
 
+func (s *stubUserStore) GetByID(_ context.Context, id string) (User, error) {
+	for _, u := range s.byEmail {
+		if u.ID == id {
+			return u, nil
+		}
+	}
+	return User{}, ErrNotFound
+}
+
 type stubSessionStore struct {
 	byHash map[string]Session
 	create func(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error)

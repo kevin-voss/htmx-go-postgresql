@@ -4,10 +4,12 @@ import (
 	"io/fs"
 	"net/http"
 
+	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/web"
 )
 
-// Routes returns the root ServeMux with method+path patterns registered.
+// Routes returns the root handler with middleware chains applied.
 func (a *Application) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", a.home)
@@ -21,7 +23,14 @@ func (a *Application) Routes() http.Handler {
 	}
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticRoot)))
 
-	return mux
+	mux.Handle("GET /app", auth.RequireAuthentication(http.HandlerFunc(a.appDashboard)))
+
+	return middleware.Chain(
+		mux,
+		middleware.SecurityHeaders,
+		a.Auth.LoadSessionMiddleware(),
+		middleware.CSRF(a.Config.CookieSecure),
+	)
 }
 
 func (a *Application) home(w http.ResponseWriter, r *http.Request) {
@@ -35,4 +44,21 @@ func (a *Application) health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
+}
+
+type appPageData struct {
+	CSRFToken string
+	User      auth.User
+}
+
+func (a *Application) appDashboard(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
+	data := appPageData{
+		CSRFToken: middleware.CSRFToken(r.Context()),
+		User:      user,
+	}
+	if err := a.Render.Render(w, http.StatusOK, "app", data); err != nil {
+		a.Logger.Error("render app dashboard failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }

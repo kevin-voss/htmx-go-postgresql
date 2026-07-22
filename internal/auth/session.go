@@ -135,6 +135,22 @@ func (s *Service) LoadSession(ctx context.Context, rawToken string) (Session, er
 	return sess, nil
 }
 
+// LoadSessionUser validates the session cookie token and loads the owning user.
+func (s *Service) LoadSessionUser(ctx context.Context, rawToken string) (Session, User, error) {
+	sess, err := s.LoadSession(ctx, rawToken)
+	if err != nil {
+		return Session{}, User{}, err
+	}
+	user, err := s.users.GetByID(ctx, sess.UserID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return Session{}, User{}, ErrInvalidSession
+		}
+		return Session{}, User{}, fmt.Errorf("auth: load session user: %w", err)
+	}
+	return sess, user, nil
+}
+
 // Logout revokes the session identified by the raw cookie token.
 func (s *Service) Logout(ctx context.Context, rawToken string) error {
 	if strings.TrimSpace(rawToken) == "" {

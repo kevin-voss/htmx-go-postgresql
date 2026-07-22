@@ -11,6 +11,7 @@
       {{end}}
 
       <form class="stack" method="post" action="/login" novalidate>
+        {{template "csrf_field" .CSRFToken}}
         <div class="form-field">
           <label class="form-field__label" for="email">Email</label>
           <input
