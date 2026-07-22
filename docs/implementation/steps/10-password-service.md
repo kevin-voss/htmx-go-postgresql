@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-10` |
 | Milestone | M2 — Authentication |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-09 |
 | Unlocks | STEP-11 |
 | Estimated scope | S |
@@ -104,6 +104,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Encoded hash format: ____. Ready for users table.
+Encoded hash format: `$argon2id$v=19$m=65536,t=3,p=4$<salt_b64>$<hash_b64>` (PHC). Params: time=3, memory=64MiB, threads=4, salt=16B, key=32B. API: `auth.Hash` / `auth.Compare` / `auth.NeedsRehash`. Ready for users table.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-11.
