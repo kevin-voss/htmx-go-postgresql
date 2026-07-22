@@ -9,16 +9,18 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/workspace"
 	"github.com/kevin-voss/htmx-go-postgresql/web"
 )
 
 // Application holds process dependencies for the HTTP server.
 type Application struct {
-	Config config.Config
-	Logger *slog.Logger
-	DB     *pgxpool.Pool
-	Render *render.Renderer
-	Auth   *auth.Handler
+	Config    config.Config
+	Logger    *slog.Logger
+	DB        *pgxpool.Pool
+	Render    *render.Renderer
+	Auth      *auth.Handler
+	Workspace *workspace.Handler
 }
 
 // New constructs an Application with the given config, logger, and database pool.
@@ -47,11 +49,19 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		cfg.CookieSecure,
 	)
 
+	workspaceRepo := workspace.NewRepository(db)
+	workspaceHandler := workspace.NewHandler(
+		workspace.NewService(workspaceRepo),
+		renderer,
+		logger,
+	)
+
 	return &Application{
-		Config: cfg,
-		Logger: logger,
-		DB:     db,
-		Render: renderer,
-		Auth:   authHandler,
+		Config:    cfg,
+		Logger:    logger,
+		DB:        db,
+		Render:    renderer,
+		Auth:      authHandler,
+		Workspace: workspaceHandler,
 	}
 }

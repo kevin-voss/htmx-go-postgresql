@@ -5,6 +5,9 @@
     <div class="stack">
       <h1>Dashboard</h1>
       <p>Welcome{{with .User}}, {{.DisplayName}}{{end}}. You are signed in.</p>
+      <div class="cluster">
+        <a class="button button--primary" href="/app/workspaces/new">Create workspace</a>
+      </div>
       <form method="post" action="/logout">
         {{template "csrf_field" .CSRFToken}}
         <button class="button" type="submit">Log out</button>

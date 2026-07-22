@@ -1,0 +1,58 @@
+{{define "title"}}New workspace — Forgeboard{{end}}
+{{define "content"}}
+<main class="page">
+  <div class="page__main">
+    <div class="stack" style="max-inline-size: 28rem;">
+      <h1>Create a workspace</h1>
+      <p>Choose a name and a unique URL slug for your team.</p>
+
+      <form class="stack" method="post" action="/app/workspaces/new" novalidate>
+        {{template "csrf_field" .CSRFToken}}
+        <div class="form-field">
+          <label class="form-field__label" for="name">Name</label>
+          <input
+            class="form-field__input"
+            type="text"
+            id="name"
+            name="name"
+            required
+            minlength="2"
+            maxlength="50"
+            value="{{.Form.Name}}"
+          >
+          {{with .Errors.Name}}
+          <p class="form-field__error">{{.}}</p>
+          {{end}}
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label" for="slug">Slug</label>
+          <input
+            class="form-field__input"
+            type="text"
+            id="slug"
+            name="slug"
+            required
+            minlength="2"
+            maxlength="48"
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            autocapitalize="off"
+            autocomplete="off"
+            spellcheck="false"
+            value="{{.Form.Slug}}"
+          >
+          <p>Lowercase letters, numbers, and hyphens. Used in URLs as /w/your-slug.</p>
+          {{with .Errors.Slug}}
+          <p class="form-field__error">{{.}}</p>
+          {{end}}
+        </div>
+
+        <div class="cluster">
+          <button class="button button--primary" type="submit">Create workspace</button>
+          <a class="button" href="/app">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+{{end}}

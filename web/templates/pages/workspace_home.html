@@ -1,0 +1,16 @@
+{{define "title"}}{{.Workspace.Name}} — Forgeboard{{end}}
+{{define "content"}}
+<main class="page">
+  <div class="page__main">
+    <div class="stack">
+      <h1>{{.Workspace.Name}}</h1>
+      <p>Workspace <code>/w/{{.Workspace.Slug}}</code>{{with .User}} · signed in as {{.DisplayName}}{{end}}.</p>
+      <p>Projects and members will appear here in later steps.</p>
+      <div class="cluster">
+        <a class="button" href="/app">Back to app</a>
+        <a class="button" href="/app/workspaces/new">New workspace</a>
+      </div>
+    </div>
+  </div>
+</main>
+{{end}}

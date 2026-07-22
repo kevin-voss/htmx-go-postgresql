@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-17` |
 | Milestone | M3 — Workspaces |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-16 |
 | Unlocks | STEP-18 |
 | Estimated scope | M |
@@ -46,10 +46,10 @@ Introduce workspaces table and creation UI at /app/workspaces/new. Slug validati
 
 ## Implementation checklist
 
-- [ ] workspaces migration
-- [ ] CRUD-create + show
-- [ ] templates
-- [ ] tests for slug uniqueness
+- [x] workspaces migration
+- [x] CRUD-create + show
+- [x] templates
+- [x] tests for slug uniqueness
 
 ## Files to create / modify
 
@@ -65,10 +65,10 @@ Prefer creating Owner membership in the same transaction when membership table a
 
 ## Acceptance criteria
 
-- [ ] User can create a workspace with name + slug
-- [ ] Duplicate slug rejected
-- [ ] GET /w/{slug} renders for existing workspace (auth required)
-- [ ] Unknown slug → 404
+- [x] User can create a workspace with name + slug
+- [x] Duplicate slug rejected
+- [x] GET /w/{slug} renders for existing workspace (auth required)
+- [x] Unknown slug → 404
 
 ## Verification
 
@@ -109,6 +109,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Slug validation regex: ____. Creator role wiring: ____.
+Slug validation regex: `^[a-z0-9]+(-[a-z0-9]+)*$` (length 2–48, lowercased). Creator role wiring: deferred to STEP-18 (`workspace_members` + Owner); `workspaces.created_by` already stores the creating user.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-18.

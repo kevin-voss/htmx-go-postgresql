@@ -20,7 +20,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 14 | Mail & email verification | `done` | |
 | 15 | Password reset & rate limit | `done` | |
 | 16 | Account sessions | `done` | |
-| 17 | Workspaces | `todo` | |
+| 17 | Workspaces | `done` | |
 | 18 | Membership & roles | `todo` | |
 | 19 | Onboarding | `todo` | |
 | 20 | Invitations & members | `todo` | |
