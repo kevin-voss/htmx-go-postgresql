@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
+	"github.com/kevin-voss/htmx-go-postgresql/internal/app"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
 )
 
@@ -21,4 +23,10 @@ func main() {
 		"env", cfg.Env,
 		"address", cfg.Address,
 	)
+
+	application := app.New(cfg, logger)
+	if err := application.Run(context.Background()); err != nil {
+		slog.Error("server stopped", "err", err)
+		os.Exit(1)
+	}
 }
