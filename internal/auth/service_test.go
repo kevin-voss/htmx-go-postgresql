@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -113,6 +114,59 @@ func (s *stubUserStore) GetByID(_ context.Context, id string) (User, error) {
 	return User{}, ErrNotFound
 }
 
+func (s *stubUserStore) MarkEmailVerified(_ context.Context, userID string, at time.Time) error {
+	for email, u := range s.byEmail {
+		if u.ID == userID {
+			u.EmailVerifiedAt = &at
+			s.byEmail[email] = u
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
+type stubVerificationStore struct {
+	byHash map[string]EmailVerificationToken
+	seq    int
+}
+
+func (s *stubVerificationStore) CreateEmailVerificationToken(_ context.Context, userID, tokenHash string, expiresAt time.Time) (EmailVerificationToken, error) {
+	s.seq++
+	tok := EmailVerificationToken{
+		ID:        "v" + strconv.Itoa(s.seq),
+		UserID:    userID,
+		TokenHash: tokenHash,
+		CreatedAt: time.Now().UTC(),
+		ExpiresAt: expiresAt,
+	}
+	if s.byHash == nil {
+		s.byHash = map[string]EmailVerificationToken{}
+	}
+	s.byHash[tokenHash] = tok
+	return tok, nil
+}
+
+func (s *stubVerificationStore) GetEmailVerificationTokenByHash(_ context.Context, tokenHash string) (EmailVerificationToken, error) {
+	if tok, ok := s.byHash[tokenHash]; ok {
+		return tok, nil
+	}
+	return EmailVerificationToken{}, ErrNotFound
+}
+
+func (s *stubVerificationStore) MarkEmailVerificationTokenUsed(_ context.Context, id string, at time.Time) error {
+	for hash, tok := range s.byHash {
+		if tok.ID == id {
+			if tok.UsedAt != nil {
+				return ErrNotFound
+			}
+			tok.UsedAt = &at
+			s.byHash[hash] = tok
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
 type stubSessionStore struct {
 	byHash map[string]Session
 	create func(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error)
@@ -175,7 +229,7 @@ func TestServiceRegisterNormalizesEmailAndHashesPassword(t *testing.T) {
 	t.Parallel()
 
 	store := &stubUserStore{}
-	svc := NewService(store, &stubSessionStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
 
 	user, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "  Ada  ",
@@ -213,7 +267,7 @@ func TestServiceRegisterDuplicateEmail(t *testing.T) {
 			"ada@example.com": {ID: "existing", Email: "ada@example.com"},
 		},
 	}
-	svc := NewService(store, &stubSessionStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
 
 	_, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",
@@ -238,7 +292,7 @@ func TestServiceRegisterCreateRaceDuplicate(t *testing.T) {
 			return User{}, ErrDuplicateEmail
 		},
 	}
-	svc := NewService(store, &stubSessionStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
 
 	_, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",
@@ -264,7 +318,7 @@ func TestServiceRegisterPropagatesStoreErrors(t *testing.T) {
 			return User{}, boom
 		},
 	}
-	svc := NewService(store, &stubSessionStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
 
 	_, _, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",

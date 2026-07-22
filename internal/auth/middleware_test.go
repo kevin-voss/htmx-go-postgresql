@@ -80,7 +80,7 @@ func TestLoadSessionSetsUserAndSessionInContext(t *testing.T) {
 		"u1": {ID: "u1", Email: "ada@example.com", DisplayName: "Ada", PasswordHash: hash},
 	}}
 	sessions := &middlewareSessionStore{}
-	svc := auth.NewService(users, sessions)
+	svc := auth.NewService(users, sessions, &middlewareVerificationStore{})
 
 	_, rawToken, err := svc.CreateSession(context.Background(), auth.CreateSessionInput{UserID: "u1"})
 	if err != nil {
@@ -120,7 +120,7 @@ func TestLoadSessionSetsUserAndSessionInContext(t *testing.T) {
 func TestLoadSessionIgnoresInvalidCookie(t *testing.T) {
 	t.Parallel()
 
-	svc := auth.NewService(&middlewareUserStore{}, &middlewareSessionStore{})
+	svc := auth.NewService(&middlewareUserStore{}, &middlewareSessionStore{}, &middlewareVerificationStore{})
 	h := middleware.Chain(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if _, ok := auth.UserFromContext(r.Context()); ok {
@@ -170,6 +170,29 @@ func (s *middlewareUserStore) GetByID(_ context.Context, id string) (auth.User, 
 		return u, nil
 	}
 	return auth.User{}, auth.ErrNotFound
+}
+
+func (s *middlewareUserStore) MarkEmailVerified(_ context.Context, userID string, at time.Time) error {
+	if u, ok := s.byID[userID]; ok {
+		u.EmailVerifiedAt = &at
+		s.byID[userID] = u
+		return nil
+	}
+	return auth.ErrNotFound
+}
+
+type middlewareVerificationStore struct{}
+
+func (middlewareVerificationStore) CreateEmailVerificationToken(context.Context, string, string, time.Time) (auth.EmailVerificationToken, error) {
+	return auth.EmailVerificationToken{}, nil
+}
+
+func (middlewareVerificationStore) GetEmailVerificationTokenByHash(context.Context, string) (auth.EmailVerificationToken, error) {
+	return auth.EmailVerificationToken{}, auth.ErrNotFound
+}
+
+func (middlewareVerificationStore) MarkEmailVerificationTokenUsed(context.Context, string, time.Time) error {
+	return auth.ErrNotFound
 }
 
 type middlewareSessionStore struct {

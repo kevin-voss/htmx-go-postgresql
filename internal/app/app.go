@@ -7,6 +7,7 @@ import (
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 	"github.com/kevin-voss/htmx-go-postgresql/web"
 )
@@ -28,9 +29,19 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		panic("render templates: " + err.Error())
 	}
 
+	mailer := mail.Sender(mail.NopMailer{})
+	if cfg.SMTPHost != "" && cfg.SMTPPort != "" {
+		smtpMailer, err := mail.NewSMTP(cfg.SMTPHost, cfg.SMTPPort)
+		if err != nil {
+			panic("mail smtp: " + err.Error())
+		}
+		mailer = smtpMailer
+	}
+
 	repo := auth.NewRepository(db)
 	authHandler := auth.NewHandler(
-		auth.NewService(repo, repo),
+		auth.NewService(repo, repo, repo),
+		mailer,
 		renderer,
 		logger,
 		cfg.CookieSecure,

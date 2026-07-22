@@ -106,6 +106,88 @@ func (r *Repository) GetByID(ctx context.Context, id string) (User, error) {
 	return u, nil
 }
 
+// MarkEmailVerified sets email_verified_at when not already set.
+func (r *Repository) MarkEmailVerified(ctx context.Context, userID string, at time.Time) error {
+	const q = `
+		UPDATE users
+		SET email_verified_at = COALESCE(email_verified_at, $2),
+		    updated_at = $2
+		WHERE id = $1`
+
+	tag, err := r.db.Exec(ctx, q, userID, at)
+	if err != nil {
+		return fmt.Errorf("auth: mark email verified: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// CreateEmailVerificationToken inserts a verification token (hash only).
+func (r *Repository) CreateEmailVerificationToken(ctx context.Context, userID, tokenHash string, expiresAt time.Time) (EmailVerificationToken, error) {
+	const q = `
+		INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)
+		RETURNING id, user_id, token_hash, created_at, expires_at, used_at`
+
+	var t EmailVerificationToken
+	err := r.db.QueryRow(ctx, q, userID, tokenHash, expiresAt).Scan(
+		&t.ID,
+		&t.UserID,
+		&t.TokenHash,
+		&t.CreatedAt,
+		&t.ExpiresAt,
+		&t.UsedAt,
+	)
+	if err != nil {
+		return EmailVerificationToken{}, fmt.Errorf("auth: create email verification token: %w", err)
+	}
+	return t, nil
+}
+
+// GetEmailVerificationTokenByHash returns the token with the given hash.
+func (r *Repository) GetEmailVerificationTokenByHash(ctx context.Context, tokenHash string) (EmailVerificationToken, error) {
+	const q = `
+		SELECT id, user_id, token_hash, created_at, expires_at, used_at
+		FROM email_verification_tokens
+		WHERE token_hash = $1`
+
+	var t EmailVerificationToken
+	err := r.db.QueryRow(ctx, q, tokenHash).Scan(
+		&t.ID,
+		&t.UserID,
+		&t.TokenHash,
+		&t.CreatedAt,
+		&t.ExpiresAt,
+		&t.UsedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return EmailVerificationToken{}, ErrNotFound
+		}
+		return EmailVerificationToken{}, fmt.Errorf("auth: get email verification token: %w", err)
+	}
+	return t, nil
+}
+
+// MarkEmailVerificationTokenUsed sets used_at for an unused token.
+func (r *Repository) MarkEmailVerificationTokenUsed(ctx context.Context, id string, at time.Time) error {
+	const q = `
+		UPDATE email_verification_tokens
+		SET used_at = $2
+		WHERE id = $1 AND used_at IS NULL`
+
+	tag, err := r.db.Exec(ctx, q, id, at)
+	if err != nil {
+		return fmt.Errorf("auth: mark email verification token used: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // CreateSession inserts a session row (token_hash only — never the raw token).
 func (r *Repository) CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error) {
 	const q = `

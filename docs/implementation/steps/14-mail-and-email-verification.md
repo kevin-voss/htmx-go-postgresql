@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-14` |
 | Milestone | M2 — Authentication |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-13 |
 | Unlocks | STEP-15 |
 | Estimated scope | M |
@@ -110,6 +110,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Verify route shape: ____. Token TTL: ____.
+Verify route shape: `GET /verify-email?token=…`. Token TTL: 24h (sha256 hash at rest).
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-15.

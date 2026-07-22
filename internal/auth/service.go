@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -20,6 +21,7 @@ type UserStore interface {
 	Create(ctx context.Context, email, displayName, passwordHash string) (User, error)
 	GetByEmail(ctx context.Context, email string) (User, error)
 	GetByID(ctx context.Context, id string) (User, error)
+	MarkEmailVerified(ctx context.Context, userID string, at time.Time) error
 }
 
 // RegisterInput is the public registration form payload.
@@ -51,13 +53,14 @@ func (e RegisterErrors) Any() bool {
 
 // Service implements auth business rules (registration, login, sessions).
 type Service struct {
-	users    UserStore
-	sessions SessionStore
+	users         UserStore
+	sessions      SessionStore
+	verifications VerificationStore
 }
 
 // NewService constructs an auth service.
-func NewService(users UserStore, sessions SessionStore) *Service {
-	return &Service{users: users, sessions: sessions}
+func NewService(users UserStore, sessions SessionStore, verifications VerificationStore) *Service {
+	return &Service{users: users, sessions: sessions, verifications: verifications}
 }
 
 // Register validates input, hashes the password, and persists a new user.
