@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-11` |
 | Milestone | M2 — Authentication |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-10 |
 | Unlocks | STEP-12 |
 | Estimated scope | L |
@@ -113,6 +113,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-If session not yet created on register, note that step 12 must wire it. User columns: ____.
+Session not created on register — STEP-12 must set the session cookie after signup and redirect toward onboarding (currently 303 → `/`). User columns: `id`, `email` (unique, lowercase), `display_name`, `password_hash`, `email_verified_at`, `created_at`, `updated_at`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-12.

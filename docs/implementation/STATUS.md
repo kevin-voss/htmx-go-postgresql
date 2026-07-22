@@ -14,7 +14,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 08 | Makefile & `make dev` | `done` | |
 | 09 | Landing page | `done` | |
 | 10 | Argon2id password service | `done` | |
-| 11 | Users & registration | `todo` | |
+| 11 | Users & registration | `done` | |
 | 12 | Sessions, login, logout | `todo` | |
 | 13 | Auth middleware & CSRF | `todo` | |
 | 14 | Mail & email verification | `todo` | |

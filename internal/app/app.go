@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 	"github.com/kevin-voss/htmx-go-postgresql/web"
@@ -16,6 +17,7 @@ type Application struct {
 	Logger *slog.Logger
 	DB     *pgxpool.Pool
 	Render *render.Renderer
+	Auth   *auth.Handler
 }
 
 // New constructs an Application with the given config, logger, and database pool.
@@ -26,10 +28,17 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		panic("render templates: " + err.Error())
 	}
 
+	authHandler := auth.NewHandler(
+		auth.NewService(auth.NewRepository(db)),
+		renderer,
+		logger,
+	)
+
 	return &Application{
 		Config: cfg,
 		Logger: logger,
 		DB:     db,
 		Render: renderer,
+		Auth:   authHandler,
 	}
 }

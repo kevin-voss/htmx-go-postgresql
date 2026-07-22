@@ -12,6 +12,7 @@ func (a *Application) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", a.home)
 	mux.HandleFunc("GET /health", a.health)
+	a.Auth.Mount(mux)
 
 	staticRoot, err := fs.Sub(web.Static, "static")
 	if err != nil {
