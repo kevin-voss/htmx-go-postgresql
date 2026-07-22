@@ -53,6 +53,45 @@ func (r *Repository) Create(ctx context.Context, workspaceID, name, slug, create
 	return p, nil
 }
 
+// ListByWorkspace returns projects for a workspace ordered by name.
+func (r *Repository) ListByWorkspace(ctx context.Context, workspaceID string) ([]Project, error) {
+	const q = `
+		SELECT id, workspace_id, name, slug, created_by, created_at, updated_at
+		FROM projects
+		WHERE workspace_id = $1
+		ORDER BY name ASC`
+
+	rows, err := r.db.Query(ctx, q, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("project: list by workspace: %w", err)
+	}
+	defer rows.Close()
+
+	var projects []Project
+	for rows.Next() {
+		var p Project
+		if err := rows.Scan(
+			&p.ID,
+			&p.WorkspaceID,
+			&p.Name,
+			&p.Slug,
+			&p.CreatedBy,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("project: list by workspace scan: %w", err)
+		}
+		projects = append(projects, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("project: list by workspace rows: %w", err)
+	}
+	if projects == nil {
+		projects = []Project{}
+	}
+	return projects, nil
+}
+
 // GetByWorkspaceAndSlug returns a project by workspace id and project slug.
 func (r *Repository) GetByWorkspaceAndSlug(ctx context.Context, workspaceID, slug string) (Project, error) {
 	const q = `

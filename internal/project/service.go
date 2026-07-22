@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -21,7 +22,27 @@ var slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 // Store is the persistence port used by Service.
 type Store interface {
 	Create(ctx context.Context, workspaceID, name, slug, createdBy string) (Project, error)
+	ListByWorkspace(ctx context.Context, workspaceID string) ([]Project, error)
 	GetByWorkspaceAndSlug(ctx context.Context, workspaceID, slug string) (Project, error)
+}
+
+// CreateInput is the public create-project form payload.
+type CreateInput struct {
+	WorkspaceID string
+	Name        string
+	Slug        string
+	CreatedBy   string
+}
+
+// CreateErrors holds per-field validation messages for the create form.
+type CreateErrors struct {
+	Name string
+	Slug string
+}
+
+// Any reports whether any field error is set.
+func (e CreateErrors) Any() bool {
+	return e.Name != "" || e.Slug != ""
 }
 
 // Service implements project business rules.
@@ -34,6 +55,14 @@ func NewService(store Store) *Service {
 	return &Service{store: store}
 }
 
+// ListByWorkspace returns projects for a workspace ordered by name.
+func (s *Service) ListByWorkspace(ctx context.Context, workspaceID string) ([]Project, error) {
+	if workspaceID == "" {
+		return nil, nil
+	}
+	return s.store.ListByWorkspace(ctx, workspaceID)
+}
+
 // GetByWorkspaceAndSlug returns a project, or ErrNotFound.
 func (s *Service) GetByWorkspaceAndSlug(ctx context.Context, workspaceID, slug string) (Project, error) {
 	slug = strings.ToLower(strings.TrimSpace(slug))
@@ -44,20 +73,51 @@ func (s *Service) GetByWorkspaceAndSlug(ctx context.Context, workspaceID, slug s
 }
 
 // Create validates and persists a project under a workspace.
-func (s *Service) Create(ctx context.Context, workspaceID, name, slug, createdBy string) (Project, error) {
-	name = strings.TrimSpace(name)
-	slug = strings.ToLower(strings.TrimSpace(slug))
-	if err := validateName(name); err != nil {
-		return Project{}, err
+// On validation or duplicate-slug failure it returns field errors and a zero Project.
+func (s *Service) Create(ctx context.Context, in CreateInput) (Project, CreateErrors, error) {
+	normalized := normalizeCreateInput(in)
+	fieldErrs := ValidateCreate(normalized)
+	if fieldErrs.Any() {
+		return Project{}, fieldErrs, nil
 	}
-	if err := validateSlug(slug); err != nil {
-		return Project{}, err
-	}
-	p, err := s.store.Create(ctx, workspaceID, name, slug, createdBy)
+
+	p, err := s.store.Create(ctx, normalized.WorkspaceID, normalized.Name, normalized.Slug, normalized.CreatedBy)
 	if err != nil {
-		return Project{}, err
+		if errors.Is(err, ErrDuplicateSlug) {
+			return Project{}, CreateErrors{Slug: "This project slug is already taken in this workspace."}, nil
+		}
+		return Project{}, CreateErrors{}, fmt.Errorf("project: create: %w", err)
 	}
-	return p, nil
+	return p, CreateErrors{}, nil
+}
+
+// ValidateCreate applies create-project field rules (no uniqueness check).
+func ValidateCreate(in CreateInput) CreateErrors {
+	var errs CreateErrors
+
+	nameLen := utf8.RuneCountInString(in.Name)
+	if nameLen < nameMin || nameLen > nameMax {
+		errs.Name = "Name must be between 2 and 50 characters."
+	}
+
+	slugLen := utf8.RuneCountInString(in.Slug)
+	switch {
+	case slugLen < slugMin || slugLen > slugMax:
+		errs.Slug = "Slug must be between 2 and 48 characters."
+	case !slugPattern.MatchString(in.Slug):
+		errs.Slug = "Slug may only use lowercase letters, numbers, and hyphens."
+	}
+
+	return errs
+}
+
+func normalizeCreateInput(in CreateInput) CreateInput {
+	return CreateInput{
+		WorkspaceID: strings.TrimSpace(in.WorkspaceID),
+		Name:        strings.TrimSpace(in.Name),
+		Slug:        strings.ToLower(strings.TrimSpace(in.Slug)),
+		CreatedBy:   strings.TrimSpace(in.CreatedBy),
+	}
 }
 
 // SlugFromName derives a URL slug from a project name.
@@ -94,23 +154,4 @@ func SlugFromName(name string) string {
 		return "project"
 	}
 	return slug
-}
-
-func validateName(name string) error {
-	n := utf8.RuneCountInString(name)
-	if n < nameMin || n > nameMax {
-		return fmt.Errorf("project: name must be between %d and %d characters", nameMin, nameMax)
-	}
-	return nil
-}
-
-func validateSlug(slug string) error {
-	n := utf8.RuneCountInString(slug)
-	if n < slugMin || n > slugMax {
-		return fmt.Errorf("project: slug must be between %d and %d characters", slugMin, slugMax)
-	}
-	if !slugPattern.MatchString(slug) {
-		return fmt.Errorf("project: invalid slug format")
-	}
-	return nil
 }

@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-21` |
 | Milestone | M4 — Projects & issues |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-20 |
 | Unlocks | STEP-22 |
 | Estimated scope | M |
@@ -46,9 +46,9 @@ Solidify projects module: list, create, show. Archive project as Owner capabilit
 
 ## Implementation checklist
 
-- [ ] project module complete
-- [ ] routes under /w/{ws}/projects...
-- [ ] tests for slug uniqueness per workspace
+- [x] project module complete
+- [x] routes under /w/{ws}/projects...
+- [x] tests for slug uniqueness per workspace
 
 ## Files to create / modify
 
@@ -64,10 +64,10 @@ Path: /w/{workspaceSlug}/projects/{projectSlug}
 
 ## Acceptance criteria
 
-- [ ] Create project within workspace
-- [ ] Open project page by slug
-- [ ] Non-member cannot access
-- [ ] Duplicate project slug in same workspace rejected
+- [x] Create project within workspace
+- [x] Open project page by slug
+- [x] Non-member cannot access
+- [x] Duplicate project slug in same workspace rejected
 
 ## Verification
 
@@ -96,17 +96,17 @@ STEP-21
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-22
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-22
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Project model fields: ____.
+Project model fields: `id`, `workspace_id`, `name`, `slug`, `created_by`, `created_at`, `updated_at` (unique `(workspace_id, slug)`). Routes: `GET/POST /w/{workspaceSlug}/projects`, `GET /w/{workspaceSlug}/projects/{projectSlug}`. RBAC: any member can list/show; Owner/Member can create (`RequireCanMutate`); non-members get 404. Archive deferred (needs schema; Owner-only later). STEP-22 can attach issues to `projects.id`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-22.

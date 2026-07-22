@@ -24,7 +24,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 18 | Membership & roles | `done` | |
 | 19 | Onboarding | `done` | |
 | 20 | Invitations & members | `done` | |
-| 21 | Projects | `todo` | |
+| 21 | Projects | `done` | |
 | 22 | Issues core | `todo` | |
 | 23 | Status / priority / assignee / archive | `todo` | |
 | 24 | Labels | `todo` | |
