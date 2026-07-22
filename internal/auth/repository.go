@@ -124,6 +124,88 @@ func (r *Repository) MarkEmailVerified(ctx context.Context, userID string, at ti
 	return nil
 }
 
+// UpdatePasswordHash replaces the user's password hash.
+func (r *Repository) UpdatePasswordHash(ctx context.Context, userID, passwordHash string) error {
+	const q = `
+		UPDATE users
+		SET password_hash = $2,
+		    updated_at = now()
+		WHERE id = $1`
+
+	tag, err := r.db.Exec(ctx, q, userID, passwordHash)
+	if err != nil {
+		return fmt.Errorf("auth: update password hash: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// CreatePasswordResetToken inserts a password-reset token (hash only).
+func (r *Repository) CreatePasswordResetToken(ctx context.Context, userID, tokenHash string, expiresAt time.Time) (PasswordResetToken, error) {
+	const q = `
+		INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)
+		RETURNING id, user_id, token_hash, created_at, expires_at, used_at`
+
+	var t PasswordResetToken
+	err := r.db.QueryRow(ctx, q, userID, tokenHash, expiresAt).Scan(
+		&t.ID,
+		&t.UserID,
+		&t.TokenHash,
+		&t.CreatedAt,
+		&t.ExpiresAt,
+		&t.UsedAt,
+	)
+	if err != nil {
+		return PasswordResetToken{}, fmt.Errorf("auth: create password reset token: %w", err)
+	}
+	return t, nil
+}
+
+// GetPasswordResetTokenByHash returns the token with the given hash.
+func (r *Repository) GetPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PasswordResetToken, error) {
+	const q = `
+		SELECT id, user_id, token_hash, created_at, expires_at, used_at
+		FROM password_reset_tokens
+		WHERE token_hash = $1`
+
+	var t PasswordResetToken
+	err := r.db.QueryRow(ctx, q, tokenHash).Scan(
+		&t.ID,
+		&t.UserID,
+		&t.TokenHash,
+		&t.CreatedAt,
+		&t.ExpiresAt,
+		&t.UsedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return PasswordResetToken{}, ErrNotFound
+		}
+		return PasswordResetToken{}, fmt.Errorf("auth: get password reset token: %w", err)
+	}
+	return t, nil
+}
+
+// MarkPasswordResetTokenUsed sets used_at for an unused token.
+func (r *Repository) MarkPasswordResetTokenUsed(ctx context.Context, id string, at time.Time) error {
+	const q = `
+		UPDATE password_reset_tokens
+		SET used_at = $2
+		WHERE id = $1 AND used_at IS NULL`
+
+	tag, err := r.db.Exec(ctx, q, id, at)
+	if err != nil {
+		return fmt.Errorf("auth: mark password reset token used: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // CreateEmailVerificationToken inserts a verification token (hash only).
 func (r *Repository) CreateEmailVerificationToken(ctx context.Context, userID, tokenHash string, expiresAt time.Time) (EmailVerificationToken, error) {
 	const q = `

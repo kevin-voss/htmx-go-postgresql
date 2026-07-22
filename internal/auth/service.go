@@ -22,6 +22,7 @@ type UserStore interface {
 	GetByEmail(ctx context.Context, email string) (User, error)
 	GetByID(ctx context.Context, id string) (User, error)
 	MarkEmailVerified(ctx context.Context, userID string, at time.Time) error
+	UpdatePasswordHash(ctx context.Context, userID, passwordHash string) error
 }
 
 // RegisterInput is the public registration form payload.
@@ -56,11 +57,12 @@ type Service struct {
 	users         UserStore
 	sessions      SessionStore
 	verifications VerificationStore
+	resets        PasswordResetStore
 }
 
 // NewService constructs an auth service.
-func NewService(users UserStore, sessions SessionStore, verifications VerificationStore) *Service {
-	return &Service{users: users, sessions: sessions, verifications: verifications}
+func NewService(users UserStore, sessions SessionStore, verifications VerificationStore, resets PasswordResetStore) *Service {
+	return &Service{users: users, sessions: sessions, verifications: verifications, resets: resets}
 }
 
 // Register validates input, hashes the password, and persists a new user.

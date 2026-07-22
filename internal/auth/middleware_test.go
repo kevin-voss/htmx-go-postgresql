@@ -80,7 +80,7 @@ func TestLoadSessionSetsUserAndSessionInContext(t *testing.T) {
 		"u1": {ID: "u1", Email: "ada@example.com", DisplayName: "Ada", PasswordHash: hash},
 	}}
 	sessions := &middlewareSessionStore{}
-	svc := auth.NewService(users, sessions, &middlewareVerificationStore{})
+	svc := auth.NewService(users, sessions, &middlewareVerificationStore{}, &middlewarePasswordResetStore{})
 
 	_, rawToken, err := svc.CreateSession(context.Background(), auth.CreateSessionInput{UserID: "u1"})
 	if err != nil {
@@ -120,7 +120,7 @@ func TestLoadSessionSetsUserAndSessionInContext(t *testing.T) {
 func TestLoadSessionIgnoresInvalidCookie(t *testing.T) {
 	t.Parallel()
 
-	svc := auth.NewService(&middlewareUserStore{}, &middlewareSessionStore{}, &middlewareVerificationStore{})
+	svc := auth.NewService(&middlewareUserStore{}, &middlewareSessionStore{}, &middlewareVerificationStore{}, &middlewarePasswordResetStore{})
 	h := middleware.Chain(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if _, ok := auth.UserFromContext(r.Context()); ok {
@@ -181,6 +181,15 @@ func (s *middlewareUserStore) MarkEmailVerified(_ context.Context, userID string
 	return auth.ErrNotFound
 }
 
+func (s *middlewareUserStore) UpdatePasswordHash(_ context.Context, userID, passwordHash string) error {
+	if u, ok := s.byID[userID]; ok {
+		u.PasswordHash = passwordHash
+		s.byID[userID] = u
+		return nil
+	}
+	return auth.ErrNotFound
+}
+
 type middlewareVerificationStore struct{}
 
 func (middlewareVerificationStore) CreateEmailVerificationToken(context.Context, string, string, time.Time) (auth.EmailVerificationToken, error) {
@@ -192,6 +201,20 @@ func (middlewareVerificationStore) GetEmailVerificationTokenByHash(context.Conte
 }
 
 func (middlewareVerificationStore) MarkEmailVerificationTokenUsed(context.Context, string, time.Time) error {
+	return auth.ErrNotFound
+}
+
+type middlewarePasswordResetStore struct{}
+
+func (middlewarePasswordResetStore) CreatePasswordResetToken(context.Context, string, string, time.Time) (auth.PasswordResetToken, error) {
+	return auth.PasswordResetToken{}, nil
+}
+
+func (middlewarePasswordResetStore) GetPasswordResetTokenByHash(context.Context, string) (auth.PasswordResetToken, error) {
+	return auth.PasswordResetToken{}, auth.ErrNotFound
+}
+
+func (middlewarePasswordResetStore) MarkPasswordResetTokenUsed(context.Context, string, time.Time) error {
 	return auth.ErrNotFound
 }
 

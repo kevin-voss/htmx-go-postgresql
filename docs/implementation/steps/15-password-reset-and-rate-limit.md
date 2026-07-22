@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-15` |
 | Milestone | M2 — Authentication |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-14 |
 | Unlocks | STEP-16 |
 | Estimated scope | L |
@@ -109,6 +109,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Rate limit parameters: ____. Reset TTL: ____.
+Rate limit parameters: 5 attempts / 15 minutes / IP (in-memory). Reset TTL: 1h (sha256 hash at rest).
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-16.

@@ -40,7 +40,7 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 
 	repo := auth.NewRepository(db)
 	authHandler := auth.NewHandler(
-		auth.NewService(repo, repo, repo),
+		auth.NewService(repo, repo, repo, repo),
 		mailer,
 		renderer,
 		logger,

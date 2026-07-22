@@ -13,7 +13,7 @@ func TestCreateEmailVerificationTokenStoresHashOnly(t *testing.T) {
 	t.Parallel()
 
 	store := &stubVerificationStore{}
-	svc := NewService(&stubUserStore{}, &stubSessionStore{}, store)
+	svc := NewService(&stubUserStore{}, &stubSessionStore{}, store, &stubPasswordResetStore{})
 
 	raw, err := svc.CreateEmailVerificationToken(context.Background(), "u1")
 	if err != nil {
@@ -50,7 +50,7 @@ func TestVerifyEmailMarksUserAndConsumesToken(t *testing.T) {
 		"ada@example.com": {ID: "u1", Email: "ada@example.com", DisplayName: "Ada"},
 	}}
 	verifications := &stubVerificationStore{}
-	svc := NewService(users, &stubSessionStore{}, verifications)
+	svc := NewService(users, &stubSessionStore{}, verifications, &stubPasswordResetStore{})
 
 	raw, err := svc.CreateEmailVerificationToken(context.Background(), "u1")
 	if err != nil {
@@ -83,7 +83,7 @@ func TestVerifyEmailRejectsExpiredAndMissing(t *testing.T) {
 		"ada@example.com": {ID: "u1", Email: "ada@example.com"},
 	}}
 	verifications := &stubVerificationStore{}
-	svc := NewService(users, &stubSessionStore{}, verifications)
+	svc := NewService(users, &stubSessionStore{}, verifications, &stubPasswordResetStore{})
 
 	if err := svc.VerifyEmail(context.Background(), ""); !errors.Is(err, ErrInvalidVerificationToken) {
 		t.Fatalf("empty token err = %v, want ErrInvalidVerificationToken", err)

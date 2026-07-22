@@ -125,6 +125,59 @@ func (s *stubUserStore) MarkEmailVerified(_ context.Context, userID string, at t
 	return ErrNotFound
 }
 
+func (s *stubUserStore) UpdatePasswordHash(_ context.Context, userID, passwordHash string) error {
+	for email, u := range s.byEmail {
+		if u.ID == userID {
+			u.PasswordHash = passwordHash
+			s.byEmail[email] = u
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
+type stubPasswordResetStore struct {
+	byHash map[string]PasswordResetToken
+	seq    int
+}
+
+func (s *stubPasswordResetStore) CreatePasswordResetToken(_ context.Context, userID, tokenHash string, expiresAt time.Time) (PasswordResetToken, error) {
+	s.seq++
+	tok := PasswordResetToken{
+		ID:        "r" + strconv.Itoa(s.seq),
+		UserID:    userID,
+		TokenHash: tokenHash,
+		CreatedAt: time.Now().UTC(),
+		ExpiresAt: expiresAt,
+	}
+	if s.byHash == nil {
+		s.byHash = map[string]PasswordResetToken{}
+	}
+	s.byHash[tokenHash] = tok
+	return tok, nil
+}
+
+func (s *stubPasswordResetStore) GetPasswordResetTokenByHash(_ context.Context, tokenHash string) (PasswordResetToken, error) {
+	if tok, ok := s.byHash[tokenHash]; ok {
+		return tok, nil
+	}
+	return PasswordResetToken{}, ErrNotFound
+}
+
+func (s *stubPasswordResetStore) MarkPasswordResetTokenUsed(_ context.Context, id string, at time.Time) error {
+	for hash, tok := range s.byHash {
+		if tok.ID == id {
+			if tok.UsedAt != nil {
+				return ErrNotFound
+			}
+			tok.UsedAt = &at
+			s.byHash[hash] = tok
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
 type stubVerificationStore struct {
 	byHash map[string]EmailVerificationToken
 	seq    int
@@ -229,7 +282,7 @@ func TestServiceRegisterNormalizesEmailAndHashesPassword(t *testing.T) {
 	t.Parallel()
 
 	store := &stubUserStore{}
-	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	user, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "  Ada  ",
@@ -267,7 +320,7 @@ func TestServiceRegisterDuplicateEmail(t *testing.T) {
 			"ada@example.com": {ID: "existing", Email: "ada@example.com"},
 		},
 	}
-	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	_, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",
@@ -292,7 +345,7 @@ func TestServiceRegisterCreateRaceDuplicate(t *testing.T) {
 			return User{}, ErrDuplicateEmail
 		},
 	}
-	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	_, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",
@@ -318,7 +371,7 @@ func TestServiceRegisterPropagatesStoreErrors(t *testing.T) {
 			return User{}, boom
 		},
 	}
-	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{})
+	svc := NewService(store, &stubSessionStore{}, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	_, _, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",

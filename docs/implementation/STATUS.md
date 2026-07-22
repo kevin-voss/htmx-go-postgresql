@@ -18,7 +18,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 12 | Sessions, login, logout | `done` | |
 | 13 | Auth middleware & CSRF | `done` | |
 | 14 | Mail & email verification | `done` | |
-| 15 | Password reset & rate limit | `todo` | |
+| 15 | Password reset & rate limit | `done` | |
 | 16 | Account sessions | `todo` | |
 | 17 | Workspaces | `todo` | |
 | 18 | Membership & roles | `todo` | |

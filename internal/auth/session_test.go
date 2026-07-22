@@ -51,7 +51,7 @@ func TestCreateSessionStoresHashOnly(t *testing.T) {
 	t.Parallel()
 
 	sessions := &stubSessionStore{}
-	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{})
+	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	sess, rawToken, err := svc.CreateSession(context.Background(), CreateSessionInput{
 		UserID:    "user-1",
@@ -81,7 +81,7 @@ func TestLoadSessionRejectsExpiredAndRevoked(t *testing.T) {
 	t.Parallel()
 
 	sessions := &stubSessionStore{byHash: map[string]Session{}}
-	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{})
+	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	rawOK := "active-token"
 	hashOK := hashSessionToken(rawOK)
@@ -136,7 +136,7 @@ func TestLoginGenericErrorAndSessionIssue(t *testing.T) {
 		},
 	}
 	sessions := &stubSessionStore{}
-	svc := NewService(users, sessions, &stubVerificationStore{})
+	svc := NewService(users, sessions, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	_, _, err = svc.Login(context.Background(), LoginInput{
 		Email:    "missing@example.com",
@@ -175,7 +175,7 @@ func TestLogoutRevokesSession(t *testing.T) {
 	t.Parallel()
 
 	sessions := &stubSessionStore{}
-	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{})
+	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{}, &stubPasswordResetStore{})
 
 	_, rawToken, err := svc.CreateSession(context.Background(), CreateSessionInput{UserID: "u1"})
 	if err != nil {
