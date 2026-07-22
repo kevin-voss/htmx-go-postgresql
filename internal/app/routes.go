@@ -10,6 +10,7 @@ import (
 // Routes returns the root ServeMux with method+path patterns registered.
 func (a *Application) Routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", a.home)
 	mux.HandleFunc("GET /health", a.health)
 
 	staticRoot, err := fs.Sub(web.Static, "static")
@@ -20,6 +21,13 @@ func (a *Application) Routes() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticRoot)))
 
 	return mux
+}
+
+func (a *Application) home(w http.ResponseWriter, r *http.Request) {
+	if err := a.Render.Render(w, http.StatusOK, "home", nil); err != nil {
+		a.Logger.Error("render home failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func (a *Application) health(w http.ResponseWriter, r *http.Request) {
