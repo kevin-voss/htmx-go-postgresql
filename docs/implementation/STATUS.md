@@ -29,7 +29,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 23 | Status / priority / assignee / archive | `done` | |
 | 24 | Labels | `done` | |
 | 25 | Search & filter | `done` | |
-| 26 | HTMX vendor & partials | `todo` | |
+| 26 | HTMX vendor & partials | `done` | |
 | 27 | 422 fragments & inline UX | `todo` | |
 | 28 | Comments multi-partial | `todo` | |
 | 29 | Activity feed | `todo` | |

@@ -62,15 +62,26 @@ func New(fsys fs.FS) (*Renderer, error) {
 
 // Render writes the named page inside the base layout with the given status.
 func (r *Renderer) Render(w http.ResponseWriter, status int, name string, data any) error {
-	t, ok := r.templates[name]
+	return r.execute(w, status, name, "base", data)
+}
+
+// RenderFragment writes a named fragment template without the base layout chrome.
+// page must be a registered page that includes the fragment define (all pages
+// share templates/fragments/*.html).
+func (r *Renderer) RenderFragment(w http.ResponseWriter, status int, page, fragment string, data any) error {
+	return r.execute(w, status, page, fragment, data)
+}
+
+func (r *Renderer) execute(w http.ResponseWriter, status int, page, tmpl string, data any) error {
+	t, ok := r.templates[page]
 	if !ok {
-		return fmt.Errorf("render: template %q not found", name)
+		return fmt.Errorf("render: template %q not found", page)
 	}
 
 	// Buffer first so a missing/broken template does not commit a partial response.
 	var buf strings.Builder
-	if err := t.ExecuteTemplate(&buf, "base", data); err != nil {
-		return fmt.Errorf("render: execute %q: %w", name, err)
+	if err := t.ExecuteTemplate(&buf, tmpl, data); err != nil {
+		return fmt.Errorf("render: execute %q (%s): %w", page, tmpl, err)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -10,6 +10,7 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/request"
 )
 
 // Handler serves project HTTP endpoints.
@@ -203,7 +204,7 @@ func (h *Handler) show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.render.Render(w, http.StatusOK, "project_show", showPageData{
+	data := showPageData{
 		CSRFToken:     middleware.CSRFToken(r.Context()),
 		WorkspaceID:   ws.ID,
 		WorkspaceName: ws.Name,
@@ -211,8 +212,16 @@ func (h *Handler) show(w http.ResponseWriter, r *http.Request) {
 		Project:       p,
 		User:          user,
 		Role:          role,
-	}); err != nil {
-		h.logger.Error("render project show failed", "err", err)
+	}
+
+	var errRender error
+	if request.IsPartialRequest(r) {
+		errRender = h.render.RenderFragment(w, http.StatusOK, "project_show", "project_content", data)
+	} else {
+		errRender = h.render.Render(w, http.StatusOK, "project_show", data)
+	}
+	if errRender != nil {
+		h.logger.Error("render project show failed", "err", errRender)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

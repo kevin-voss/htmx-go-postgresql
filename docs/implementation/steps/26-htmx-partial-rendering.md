@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-26` |
 | Milestone | M5 — HTMX experience |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-25 |
 | Unlocks | STEP-27 |
 | Estimated scope | M |
@@ -45,9 +45,9 @@ Pin and vendor HTMX. Implement isPartialRequest and dual templates for one route
 
 ## Implementation checklist
 
-- [ ] Vendor file committed
-- [ ] Helper + one dual-mode handler
-- [ ] Document HX-Request-Type handling
+- [x] Vendor file committed
+- [x] Helper + one dual-mode handler
+- [x] Document HX-Request-Type handling
 
 ## Files to create / modify
 
@@ -63,10 +63,10 @@ No CDN dependency for runtime. Do not upgrade past pin without human approval.
 
 ## Acceptance criteria
 
-- [ ] Vendored HTMX file exists at pinned version
-- [ ] Layout loads local HTMX
-- [ ] Partial request returns fragment without full layout chrome
-- [ ] Full request returns full page
+- [x] Vendored HTMX file exists at pinned version
+- [x] Layout loads local HTMX
+- [x] Partial request returns fragment without full layout chrome
+- [x] Full request returns full page
 
 ## Verification
 
@@ -96,17 +96,17 @@ STEP-26
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-27
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-27
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Pinned path: /static/vendor/htmx-4.0.0-beta5.min.js. First dual-mode route: ____.
+Pinned path: /static/vendor/htmx-4.0.0-beta5.min.js. First dual-mode route: `GET /w/{workspaceSlug}/projects/{projectSlug}` (`project_show` / fragment `project_content`).
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-27.
