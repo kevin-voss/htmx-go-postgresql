@@ -31,7 +31,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 25 | Search & filter | `done` | |
 | 26 | HTMX vendor & partials | `done` | |
 | 27 | 422 fragments & inline UX | `done` | |
-| 28 | Comments multi-partial | `todo` | |
+| 28 | Comments multi-partial | `done` | |
 | 29 | Activity feed | `todo` | |
 | 30 | Seed demo data | `todo` | |
 | 31 | Integration tests | `todo` | |

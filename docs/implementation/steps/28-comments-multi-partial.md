@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-28` |
 | Milestone | M5 — HTMX experience |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-27 |
 | Unlocks | STEP-29 |
 | Estimated scope | L |
@@ -46,10 +46,10 @@ Implement comments module and the canonical multi-target update from the comment
 
 ## Implementation checklist
 
-- [ ] comments migration + module
-- [ ] templates for comment + form + count
-- [ ] multi-partial response
-- [ ] tests for create authz
+- [x] comments migration + module
+- [x] templates for comment + form + count
+- [x] multi-partial response
+- [x] tests for create authz
 
 ## Files to create / modify
 
@@ -65,11 +65,11 @@ Match the example structure in comments.md closely.
 
 ## Acceptance criteria
 
-- [ ] Comment posts via HTMX and appends without full reload
-- [ ] Comment count updates in same response
-- [ ] Form clears in same response
-- [ ] Uses <hx-partial> multi-target pattern
-- [ ] Viewer cannot create comments
+- [x] Comment posts via HTMX and appends without full reload
+- [x] Comment count updates in same response
+- [x] Form clears in same response
+- [x] Uses <hx-partial> multi-target pattern
+- [x] Viewer cannot create comments
 
 ## Verification
 
@@ -110,6 +110,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-M5 complete. Comment delete policy: ____.
+M5 complete. Comment delete policy: author or Owner (elevated).
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-29.

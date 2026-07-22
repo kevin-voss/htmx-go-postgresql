@@ -1,0 +1,16 @@
+{{define "comment_create_response"}}
+<hx-partial hx-target="#comment-list-empty" hx-swap="delete"></hx-partial>
+
+<hx-partial hx-target="#comment-list" hx-swap="beforeend">
+  {{template "comment_item" .Item}}
+</hx-partial>
+
+<hx-partial hx-target="#comment-count" hx-swap="outerHTML">
+  {{template "comment_count" .Count}}
+</hx-partial>
+
+<hx-partial hx-target="#comment-form" hx-swap="outerHTML">
+  {{template "comment_form" .Form}}
+</hx-partial>
+{{end}}
+

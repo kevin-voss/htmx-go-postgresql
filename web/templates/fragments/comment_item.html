@@ -1,0 +1,20 @@
+{{define "comment_item"}}
+<article class="stack" id="comment-{{.Comment.ID}}">
+  <p>
+    <strong>{{.Comment.AuthorName}}</strong>
+    <span> · {{.Comment.CreatedAt.UTC.Format "2006-01-02 15:04"}} UTC</span>
+  </p>
+  <p>{{.Comment.Body}}</p>
+  {{if .CanDelete}}
+  <form
+    method="post"
+    action="/w/{{.WorkspaceSlug}}/issues/{{.IssueNumber}}/comments/{{.Comment.ID}}/delete"
+    hx-delete="/w/{{.WorkspaceSlug}}/issues/{{.IssueNumber}}/comments/{{.Comment.ID}}"
+    hx-swap="none"
+  >
+    {{template "csrf_field" .CSRFToken}}
+    <button class="button button--danger" type="submit">Delete</button>
+  </form>
+  {{end}}
+</article>
+{{end}}

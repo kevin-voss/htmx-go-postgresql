@@ -1,11 +1,13 @@
 package issue
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
@@ -15,11 +17,45 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/project"
 )
 
+// CommentLister loads comments for issue show pages.
+type CommentLister interface {
+	ListByIssue(ctx context.Context, issueID string) ([]ShowComment, error)
+	CountByIssue(ctx context.Context, issueID string) (int, error)
+}
+
+// ShowComment is a comment row for issue detail rendering.
+type ShowComment struct {
+	ID         string
+	AuthorID   string
+	AuthorName string
+	Body       string
+	CreatedAt  time.Time
+}
+
+// showCommentItem matches the comment_item fragment data shape.
+type showCommentItem struct {
+	Comment       ShowComment
+	WorkspaceSlug string
+	IssueNumber   int
+	CSRFToken     string
+	CanDelete     bool
+}
+
+// showCommentForm matches the comment_form fragment data shape.
+type showCommentForm struct {
+	CSRFToken     string
+	WorkspaceSlug string
+	IssueNumber   int
+	Body          string
+	Error         string
+}
+
 // Handler serves issue HTTP endpoints.
 type Handler struct {
 	service  *Service
 	projects *project.Service
 	members  *member.Service
+	comments CommentLister
 	render   *render.Renderer
 	logger   *slog.Logger
 }
@@ -39,6 +75,12 @@ func NewHandler(
 		render:   renderer,
 		logger:   logger,
 	}
+}
+
+// WithComments attaches a comment lister for issue show pages.
+func (h *Handler) WithComments(comments CommentLister) *Handler {
+	h.comments = comments
+	return h
 }
 
 // Mount registers issue routes on mux (all require authentication + membership).
@@ -198,6 +240,10 @@ type showPageData struct {
 	User          auth.User
 	Role          string
 	CanEdit       bool
+	CanComment    bool
+	Count         int
+	Comments      []showCommentItem
+	CommentForm   showCommentForm
 	Statuses      []optionData
 	Priorities    []optionData
 	Members       []memberOption
@@ -977,8 +1023,37 @@ func (h *Handler) renderShowPage(
 		return
 	}
 	canEdit := member.Role(role).CanMutate()
+	csrf := middleware.CSRFToken(r.Context())
+
+	var comments []showCommentItem
+	count := 0
+	if h.comments != nil {
+		listed, listErr := h.comments.ListByIssue(r.Context(), issue.ID)
+		if listErr != nil {
+			h.logger.Error("list comments failed", "err", listErr, "issue_id", issue.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		count, err = h.comments.CountByIssue(r.Context(), issue.ID)
+		if err != nil {
+			h.logger.Error("count comments failed", "err", err, "issue_id", issue.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		comments = make([]showCommentItem, 0, len(listed))
+		for _, c := range listed {
+			comments = append(comments, showCommentItem{
+				Comment:       c,
+				WorkspaceSlug: ws.Slug,
+				IssueNumber:   issue.IssueNumber,
+				CSRFToken:     csrf,
+				CanDelete:     c.AuthorID == user.ID || role == string(member.RoleOwner),
+			})
+		}
+	}
+
 	h.renderShow(w, showPageData{
-		CSRFToken:     middleware.CSRFToken(r.Context()),
+		CSRFToken:     csrf,
 		WorkspaceID:   ws.ID,
 		WorkspaceName: ws.Name,
 		WorkspaceSlug: ws.Slug,
@@ -993,9 +1068,17 @@ func (h *Handler) renderShowPage(
 		User:          user,
 		Role:          role,
 		CanEdit:       canEdit,
-		Statuses:      statusOptions(),
-		Priorities:    priorityOptions(),
-		Members:       memberOpts,
+		CanComment:    canEdit,
+		Count:         count,
+		Comments:      comments,
+		CommentForm: showCommentForm{
+			CSRFToken:     csrf,
+			WorkspaceSlug: ws.Slug,
+			IssueNumber:   issue.IssueNumber,
+		},
+		Statuses:   statusOptions(),
+		Priorities: priorityOptions(),
+		Members:    memberOpts,
 	})
 }
 

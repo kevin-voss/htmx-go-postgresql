@@ -113,6 +113,25 @@
       </div>
       {{end}}
 
+      <div class="stack">
+        <h2>Comments</h2>
+        {{template "comment_count" .}}
+
+        <div id="comment-list" class="stack">
+          {{range .Comments}}
+          {{template "comment_item" .}}
+          {{else}}
+          <p id="comment-list-empty">No comments yet.</p>
+          {{end}}
+        </div>
+
+        {{if and .CanComment (not .Issue.Archived)}}
+        {{template "comment_form" .CommentForm}}
+        {{else if not .CanComment}}
+        <p>Viewers can read comments but cannot post.</p>
+        {{end}}
+      </div>
+
       <div class="cluster">
         <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">All issues</a>
         <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">Project</a>

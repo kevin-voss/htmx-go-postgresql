@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/comment"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/issue"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
@@ -26,6 +27,7 @@ type Application struct {
 	Workspace  *workspace.Handler
 	Project    *project.Handler
 	Issue      *issue.Handler
+	Comment    *comment.Handler
 	Members    *member.Service
 	MemberHTTP *member.Handler
 }
@@ -81,13 +83,25 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 	issueService := issue.NewService(issueRepo).
 		WithMembershipChecker(memberService).
 		WithLabelStore(issueRepo)
-	issueHandler := issue.NewHandler(
+
+	commentRepo := comment.NewRepository(db)
+	commentService := comment.NewService(commentRepo)
+	commentHandler := comment.NewHandler(
+		commentService,
 		issueService,
 		projectService,
 		memberService,
 		renderer,
 		logger,
 	)
+
+	issueHandler := issue.NewHandler(
+		issueService,
+		projectService,
+		memberService,
+		renderer,
+		logger,
+	).WithComments(comment.IssueShowLister{Service: commentService})
 
 	return &Application{
 		Config:     cfg,
@@ -98,6 +112,7 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		Workspace:  workspaceHandler,
 		Project:    projectHandler,
 		Issue:      issueHandler,
+		Comment:    commentHandler,
 		Members:    memberService,
 		MemberHTTP: memberHandler,
 	}

@@ -1,0 +1,34 @@
+{{define "comment_form"}}
+<form
+  id="comment-form"
+  class="stack"
+  method="post"
+  action="/w/{{.WorkspaceSlug}}/issues/{{.IssueNumber}}/comments"
+  style="max-inline-size: 40rem;"
+  hx-post="/w/{{.WorkspaceSlug}}/issues/{{.IssueNumber}}/comments"
+  hx-swap="none"
+  hx-status:422="target:#comment-form swap:outerHTML"
+  hx-indicator="#comment-submit-indicator"
+  hx-disable="find button[type='submit']"
+>
+  {{template "csrf_field" .CSRFToken}}
+  <div class="form-field">
+    <label class="form-field__label" for="comment_body">Add a comment</label>
+    <textarea
+      class="form-field__input"
+      id="comment_body"
+      name="body"
+      rows="4"
+      required
+      maxlength="10000"
+    >{{.Body}}</textarea>
+    {{with .Error}}<p class="form-field__error">{{.}}</p>{{end}}
+  </div>
+  <div class="cluster">
+    <button class="button button--primary" type="submit">
+      Post comment
+      <span id="comment-submit-indicator" class="htmx-indicator" aria-hidden="true">Posting…</span>
+    </button>
+  </div>
+</form>
+{{end}}

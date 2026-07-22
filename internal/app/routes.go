@@ -18,6 +18,7 @@ func (a *Application) Routes() http.Handler {
 	a.Workspace.Mount(mux)
 	a.Project.Mount(mux)
 	a.Issue.Mount(mux)
+	a.Comment.Mount(mux)
 	a.MemberHTTP.Mount(mux)
 
 	staticRoot, err := fs.Sub(web.Static, "static")
