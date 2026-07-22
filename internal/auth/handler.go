@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
@@ -56,6 +57,9 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("POST /forgot-password", h.forgotPassword)
 	mux.HandleFunc("GET /reset-password/{token}", h.showResetPassword)
 	mux.HandleFunc("POST /reset-password/{token}", h.resetPassword)
+	mux.Handle("GET /account/sessions", RequireAuthentication(http.HandlerFunc(h.showSessions)))
+	mux.Handle("POST /account/sessions/{id}/revoke", RequireAuthentication(http.HandlerFunc(h.revokeSession)))
+	mux.Handle("DELETE /account/sessions/{id}", RequireAuthentication(http.HandlerFunc(h.revokeSession)))
 }
 
 // LoadSessionMiddleware returns middleware that populates session/user context.
@@ -100,6 +104,20 @@ type resetPasswordPageData struct {
 	Token     string
 	Errors    ResetPasswordErrors
 	Success   bool
+}
+
+type sessionsPageData struct {
+	CSRFToken string
+	Sessions  []sessionRow
+}
+
+type sessionRow struct {
+	ID         string
+	UserAgent  string
+	IPAddress  string
+	LastSeenAt string
+	CreatedAt  string
+	Current    bool
 }
 
 func (h *Handler) showRegister(w http.ResponseWriter, r *http.Request) {
@@ -250,6 +268,70 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func (h *Handler) showSessions(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	currentID := ""
+	if sess, ok := SessionFromContext(r.Context()); ok {
+		currentID = sess.ID
+	}
+
+	sessions, err := h.service.ListSessions(r.Context(), user.ID, currentID)
+	if err != nil {
+		h.logger.Error("list sessions failed", "err", err, "user_id", user.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	rows := make([]sessionRow, 0, len(sessions))
+	for _, s := range sessions {
+		rows = append(rows, sessionRow{
+			ID:         s.ID,
+			UserAgent:  displayOrDash(s.UserAgent),
+			IPAddress:  displayOrDash(s.IPAddress),
+			LastSeenAt: formatSessionTime(s.LastSeenAt),
+			CreatedAt:  formatSessionTime(s.CreatedAt),
+			Current:    s.Current,
+		})
+	}
+
+	h.renderSessions(w, http.StatusOK, sessionsPageData{
+		CSRFToken: middleware.CSRFToken(r.Context()),
+		Sessions:  rows,
+	})
+}
+
+func (h *Handler) revokeSession(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	sessionID := strings.TrimSpace(r.PathValue("id"))
+	current, _ := SessionFromContext(r.Context())
+
+	if err := h.service.RevokeSession(r.Context(), user.ID, sessionID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		h.logger.Error("revoke session failed", "err", err, "user_id", user.ID, "session_id", sessionID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	if current.ID != "" && current.ID == sessionID {
+		ClearSessionCookie(w, h.cookieSecure)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/account/sessions", http.StatusSeeOther)
+}
+
 func (h *Handler) showForgotPassword(w http.ResponseWriter, r *http.Request) {
 	h.renderForgotPassword(w, http.StatusOK, forgotPasswordPageData{
 		CSRFToken: middleware.CSRFToken(r.Context()),
@@ -384,6 +466,28 @@ func (h *Handler) renderResetPassword(w http.ResponseWriter, status int, data re
 		h.logger.Error("render reset password failed", "err", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+func (h *Handler) renderSessions(w http.ResponseWriter, status int, data sessionsPageData) {
+	if err := h.render.Render(w, status, "account_sessions", data); err != nil {
+		h.logger.Error("render account sessions failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func displayOrDash(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "—"
+	}
+	return v
+}
+
+func formatSessionTime(t time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	return t.UTC().Format("2006-01-02 15:04 UTC")
 }
 
 func acceptedTerms(v string) bool {

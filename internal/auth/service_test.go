@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -222,6 +224,7 @@ func (s *stubVerificationStore) MarkEmailVerificationTokenUsed(_ context.Context
 
 type stubSessionStore struct {
 	byHash map[string]Session
+	nextID int
 	create func(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error)
 }
 
@@ -229,12 +232,14 @@ func (s *stubSessionStore) CreateSession(ctx context.Context, userID, tokenHash 
 	if s.create != nil {
 		return s.create(ctx, userID, tokenHash, expiresAt, userAgent, ipAddress)
 	}
+	s.nextID++
+	now := time.Now().UTC()
 	sess := Session{
-		ID:         "s1",
+		ID:         fmt.Sprintf("s%d", s.nextID),
 		UserID:     userID,
 		TokenHash:  tokenHash,
-		CreatedAt:  time.Now().UTC(),
-		LastSeenAt: time.Now().UTC(),
+		CreatedAt:  now,
+		LastSeenAt: now,
 		ExpiresAt:  expiresAt,
 		UserAgent:  userAgent,
 		IPAddress:  ipAddress,
@@ -253,6 +258,24 @@ func (s *stubSessionStore) GetSessionByTokenHash(_ context.Context, tokenHash st
 	return Session{}, ErrNotFound
 }
 
+func (s *stubSessionStore) ListActiveSessionsByUserID(_ context.Context, userID string) ([]Session, error) {
+	now := time.Now().UTC()
+	var out []Session
+	for _, sess := range s.byHash {
+		if sess.UserID != userID {
+			continue
+		}
+		if sess.RevokedAt != nil || !sess.ExpiresAt.After(now) {
+			continue
+		}
+		out = append(out, sess)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].LastSeenAt.After(out[j].LastSeenAt)
+	})
+	return out, nil
+}
+
 func (s *stubSessionStore) RevokeSessionByTokenHash(_ context.Context, tokenHash string) error {
 	sess, ok := s.byHash[tokenHash]
 	if !ok {
@@ -262,6 +285,21 @@ func (s *stubSessionStore) RevokeSessionByTokenHash(_ context.Context, tokenHash
 	sess.RevokedAt = &now
 	s.byHash[tokenHash] = sess
 	return nil
+}
+
+func (s *stubSessionStore) RevokeSessionByIDForUser(_ context.Context, sessionID, userID string) error {
+	for hash, sess := range s.byHash {
+		if sess.ID == sessionID && sess.UserID == userID {
+			if sess.RevokedAt != nil {
+				return ErrNotFound
+			}
+			now := time.Now().UTC()
+			sess.RevokedAt = &now
+			s.byHash[hash] = sess
+			return nil
+		}
+	}
+	return ErrNotFound
 }
 
 func (s *stubSessionStore) TouchSession(_ context.Context, id string, at time.Time) error {

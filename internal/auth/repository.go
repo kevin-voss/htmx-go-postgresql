@@ -325,6 +325,47 @@ func (r *Repository) GetSessionByTokenHash(ctx context.Context, tokenHash string
 	return s, nil
 }
 
+// ListActiveSessionsByUserID returns non-revoked, non-expired sessions for a user.
+func (r *Repository) ListActiveSessionsByUserID(ctx context.Context, userID string) ([]Session, error) {
+	const q = `
+		SELECT id, user_id, token_hash, created_at, last_seen_at, expires_at,
+			COALESCE(user_agent, ''), COALESCE(ip_address, ''), revoked_at
+		FROM sessions
+		WHERE user_id = $1
+		  AND revoked_at IS NULL
+		  AND expires_at > now()
+		ORDER BY last_seen_at DESC`
+
+	rows, err := r.db.Query(ctx, q, userID)
+	if err != nil {
+		return nil, fmt.Errorf("auth: list sessions by user: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []Session
+	for rows.Next() {
+		var s Session
+		if err := rows.Scan(
+			&s.ID,
+			&s.UserID,
+			&s.TokenHash,
+			&s.CreatedAt,
+			&s.LastSeenAt,
+			&s.ExpiresAt,
+			&s.UserAgent,
+			&s.IPAddress,
+			&s.RevokedAt,
+		); err != nil {
+			return nil, fmt.Errorf("auth: scan session: %w", err)
+		}
+		sessions = append(sessions, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("auth: list sessions by user: %w", err)
+	}
+	return sessions, nil
+}
+
 // RevokeSessionByTokenHash sets revoked_at for the matching session.
 func (r *Repository) RevokeSessionByTokenHash(ctx context.Context, tokenHash string) error {
 	const q = `
@@ -335,6 +376,23 @@ func (r *Repository) RevokeSessionByTokenHash(ctx context.Context, tokenHash str
 	tag, err := r.db.Exec(ctx, q, tokenHash)
 	if err != nil {
 		return fmt.Errorf("auth: revoke session: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// RevokeSessionByIDForUser revokes a session only when it belongs to userID.
+func (r *Repository) RevokeSessionByIDForUser(ctx context.Context, sessionID, userID string) error {
+	const q = `
+		UPDATE sessions
+		SET revoked_at = now()
+		WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`
+
+	tag, err := r.db.Exec(ctx, q, sessionID, userID)
+	if err != nil {
+		return fmt.Errorf("auth: revoke session by id: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound

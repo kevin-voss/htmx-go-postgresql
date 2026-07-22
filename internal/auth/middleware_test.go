@@ -247,6 +247,18 @@ func (s *middlewareSessionStore) GetSessionByTokenHash(_ context.Context, tokenH
 	return auth.Session{}, auth.ErrNotFound
 }
 
+func (s *middlewareSessionStore) ListActiveSessionsByUserID(_ context.Context, userID string) ([]auth.Session, error) {
+	now := time.Now().UTC()
+	var out []auth.Session
+	for _, sess := range s.byHash {
+		if sess.UserID != userID || sess.RevokedAt != nil || !sess.ExpiresAt.After(now) {
+			continue
+		}
+		out = append(out, sess)
+	}
+	return out, nil
+}
+
 func (s *middlewareSessionStore) RevokeSessionByTokenHash(_ context.Context, tokenHash string) error {
 	sess, ok := s.byHash[tokenHash]
 	if !ok {
@@ -256,6 +268,21 @@ func (s *middlewareSessionStore) RevokeSessionByTokenHash(_ context.Context, tok
 	sess.RevokedAt = &now
 	s.byHash[tokenHash] = sess
 	return nil
+}
+
+func (s *middlewareSessionStore) RevokeSessionByIDForUser(_ context.Context, sessionID, userID string) error {
+	for hash, sess := range s.byHash {
+		if sess.ID == sessionID && sess.UserID == userID {
+			if sess.RevokedAt != nil {
+				return auth.ErrNotFound
+			}
+			now := time.Now().UTC()
+			sess.RevokedAt = &now
+			s.byHash[hash] = sess
+			return nil
+		}
+	}
+	return auth.ErrNotFound
 }
 
 func (s *middlewareSessionStore) TouchSession(_ context.Context, id string, at time.Time) error {

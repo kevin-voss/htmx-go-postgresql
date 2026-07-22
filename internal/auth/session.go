@@ -51,8 +51,20 @@ type CreateSessionInput struct {
 type SessionStore interface {
 	CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error)
+	ListActiveSessionsByUserID(ctx context.Context, userID string) ([]Session, error)
 	RevokeSessionByTokenHash(ctx context.Context, tokenHash string) error
+	RevokeSessionByIDForUser(ctx context.Context, sessionID, userID string) error
 	TouchSession(ctx context.Context, id string, at time.Time) error
+}
+
+// SessionInfo is a safe view of a session for account UI (no token material).
+type SessionInfo struct {
+	ID         string
+	UserAgent  string
+	IPAddress  string
+	LastSeenAt time.Time
+	CreatedAt  time.Time
+	Current    bool
 }
 
 // LoginInput is the public login form payload.
@@ -159,6 +171,45 @@ func (s *Service) Logout(ctx context.Context, rawToken string) error {
 	err := s.sessions.RevokeSessionByTokenHash(ctx, hashSessionToken(rawToken))
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return err
+	}
+	return nil
+}
+
+// ListSessions returns non-revoked, non-expired sessions for userID.
+// currentSessionID marks the caller's active session when present.
+// Token hashes are never exposed.
+func (s *Service) ListSessions(ctx context.Context, userID, currentSessionID string) ([]SessionInfo, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, nil
+	}
+	sessions, err := s.sessions.ListActiveSessionsByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("auth: list sessions: %w", err)
+	}
+	out := make([]SessionInfo, 0, len(sessions))
+	for _, sess := range sessions {
+		out = append(out, SessionInfo{
+			ID:         sess.ID,
+			UserAgent:  sess.UserAgent,
+			IPAddress:  sess.IPAddress,
+			LastSeenAt: sess.LastSeenAt,
+			CreatedAt:  sess.CreatedAt,
+			Current:    currentSessionID != "" && sess.ID == currentSessionID,
+		})
+	}
+	return out, nil
+}
+
+// RevokeSession revokes a session owned by userID. Other users' sessions are not found.
+func (s *Service) RevokeSession(ctx context.Context, userID, sessionID string) error {
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(sessionID) == "" {
+		return ErrNotFound
+	}
+	if err := s.sessions.RevokeSessionByIDForUser(ctx, sessionID, userID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("auth: revoke session: %w", err)
 	}
 	return nil
 }

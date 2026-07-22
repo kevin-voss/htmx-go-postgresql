@@ -1,0 +1,47 @@
+{{define "title"}}Sessions — Forgeboard{{end}}
+{{define "content"}}
+<main class="page">
+  <div class="page__main">
+    <div class="stack">
+      <h1>Active sessions</h1>
+      <p>Devices and browsers currently signed in to your account. Revoke any you do not recognize.</p>
+
+      {{if .Sessions}}
+      <div class="stack">
+        {{range .Sessions}}
+        <div class="issue-card">
+          <div class="issue-card__header">
+            <p class="issue-card__title">
+              {{.UserAgent}}
+              {{if .Current}}
+              <span class="issue-card__meta">(this device)</span>
+              {{end}}
+            </p>
+            {{if not .Current}}
+            <form method="post" action="/account/sessions/{{.ID}}/revoke">
+              {{template "csrf_field" $.CSRFToken}}
+              <button class="button button--danger" type="submit">Revoke</button>
+            </form>
+            {{end}}
+          </div>
+          <p class="issue-card__meta">IP: {{.IPAddress}}</p>
+          <p class="issue-card__meta">Last seen: {{.LastSeenAt}}</p>
+          <p class="issue-card__meta">Signed in: {{.CreatedAt}}</p>
+          {{if .Current}}
+          <form method="post" action="/account/sessions/{{.ID}}/revoke">
+            {{template "csrf_field" $.CSRFToken}}
+            <button class="button" type="submit">Sign out this device</button>
+          </form>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p>No active sessions.</p>
+      {{end}}
+
+      <p><a href="/app">Back to dashboard</a></p>
+    </div>
+  </div>
+</main>
+{{end}}

@@ -202,3 +202,101 @@ func TestSessionCookieName(t *testing.T) {
 		t.Fatal("production cookie should use __Host- prefix")
 	}
 }
+
+func TestListSessionsOnlyOwnActiveAndMarksCurrent(t *testing.T) {
+	t.Parallel()
+
+	sessions := &stubSessionStore{byHash: map[string]Session{}}
+	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{}, &stubPasswordResetStore{})
+
+	mineA, _, err := svc.CreateSession(context.Background(), CreateSessionInput{
+		UserID:    "u1",
+		UserAgent: "Browser A",
+		IPAddress: "10.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("CreateSession A: %v", err)
+	}
+	mineB, _, err := svc.CreateSession(context.Background(), CreateSessionInput{
+		UserID:    "u1",
+		UserAgent: "Browser B",
+		IPAddress: "10.0.0.2",
+	})
+	if err != nil {
+		t.Fatalf("CreateSession B: %v", err)
+	}
+	_, _, err = svc.CreateSession(context.Background(), CreateSessionInput{
+		UserID:    "u2",
+		UserAgent: "Other User",
+		IPAddress: "10.0.0.3",
+	})
+	if err != nil {
+		t.Fatalf("CreateSession other: %v", err)
+	}
+
+	// Revoke one of u1's sessions — it must disappear from the list.
+	if err := svc.RevokeSession(context.Background(), "u1", mineB.ID); err != nil {
+		t.Fatalf("RevokeSession: %v", err)
+	}
+
+	list, err := svc.ListSessions(context.Background(), "u1", mineA.ID)
+	if err != nil {
+		t.Fatalf("ListSessions: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("list len = %d, want 1 (own active only)", len(list))
+	}
+	if list[0].ID != mineA.ID {
+		t.Fatalf("session id = %q, want %q", list[0].ID, mineA.ID)
+	}
+	if !list[0].Current {
+		t.Fatal("expected current session flag")
+	}
+	if list[0].UserAgent != "Browser A" || list[0].IPAddress != "10.0.0.1" {
+		t.Fatalf("metadata = %+v", list[0])
+	}
+	if list[0].ID == "" {
+		t.Fatal("session id must be present")
+	}
+	// Ensure token material is not part of the view type surface used by callers.
+	_ = SessionInfo{} // compile-time reminder: no TokenHash field
+}
+
+func TestRevokeSessionBlocksAuthenticatedUse(t *testing.T) {
+	t.Parallel()
+
+	sessions := &stubSessionStore{}
+	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{}, &stubPasswordResetStore{})
+
+	sess, rawToken, err := svc.CreateSession(context.Background(), CreateSessionInput{UserID: "u1"})
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if _, err := svc.LoadSession(context.Background(), rawToken); err != nil {
+		t.Fatalf("LoadSession before revoke: %v", err)
+	}
+	if err := svc.RevokeSession(context.Background(), "u1", sess.ID); err != nil {
+		t.Fatalf("RevokeSession: %v", err)
+	}
+	if _, err := svc.LoadSession(context.Background(), rawToken); !errors.Is(err, ErrInvalidSession) {
+		t.Fatalf("after revoke LoadSession err = %v, want ErrInvalidSession", err)
+	}
+}
+
+func TestRevokeSessionRejectsOtherUsersSession(t *testing.T) {
+	t.Parallel()
+
+	sessions := &stubSessionStore{}
+	svc := NewService(&stubUserStore{}, sessions, &stubVerificationStore{}, &stubPasswordResetStore{})
+
+	victim, rawToken, err := svc.CreateSession(context.Background(), CreateSessionInput{UserID: "u1"})
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if err := svc.RevokeSession(context.Background(), "u2", victim.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("cross-user revoke err = %v, want ErrNotFound", err)
+	}
+	if _, err := svc.LoadSession(context.Background(), rawToken); err != nil {
+		t.Fatalf("victim session should remain active: %v", err)
+	}
+}
