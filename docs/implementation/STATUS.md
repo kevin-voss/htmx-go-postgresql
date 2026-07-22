@@ -33,7 +33,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 27 | 422 fragments & inline UX | `done` | |
 | 28 | Comments multi-partial | `done` | |
 | 29 | Activity feed | `done` | |
-| 30 | Seed demo data | `todo` | |
+| 30 | Seed demo data | `done` | |
 | 31 | Integration tests | `todo` | |
 | 32 | CI, prod image, README | `todo` | |
 

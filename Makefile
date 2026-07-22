@@ -43,7 +43,8 @@ migrate:
 
 .PHONY: seed
 seed:
-	@echo "seed: stub — demo data lands in STEP-30"
+	$(COMPOSE) run --rm app \
+		go run ./cmd/seed
 
 .PHONY: logs
 logs:

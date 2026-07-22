@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-30` |
 | Milestone | M6 — Portfolio quality |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-29 |
 | Unlocks | STEP-31 |
 | Estimated scope | M |
@@ -105,6 +105,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Demo email/password: ____. Idempotency: ____.
+Demo email/password: `demo@forgeboard.local` / `demo-password`. Idempotency: re-run deletes workspace slug `demo` (CASCADE) and recreates demo content; upserts demo user; refuses `APP_ENV=production`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-31.
