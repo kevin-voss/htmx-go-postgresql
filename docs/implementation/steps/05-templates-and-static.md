@@ -107,6 +107,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-How to add a page: ____. Static URL prefix: /static/.
+How to add a page: add `web/templates/pages/<name>.html` with `title`/`content` blocks; call `render.Render(w, status, "<name>", data)`. Static URL prefix: /static/.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-06.

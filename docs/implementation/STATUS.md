@@ -8,7 +8,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 02 | Docker Compose services | `done` | |
 | 03 | Config & slog | `done` | |
 | 04 | HTTP server, health, shutdown | `done` | |
-| 05 | Templates & static files | `todo` | |
+| 05 | Templates & static files | `done` | |
 | 06 | CSS foundation | `todo` | |
 | 07 | DB pool & migrations | `todo` | |
 | 08 | Makefile & `make dev` | `todo` | |

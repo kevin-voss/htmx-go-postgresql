@@ -9,7 +9,6 @@
 *.test
 *.out
 /cmd/web/web
-/web
 /forgeboard
 
 # Dependencies
