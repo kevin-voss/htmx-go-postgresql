@@ -27,7 +27,7 @@ One sentence: what capability exists when this step is finished.
 
 ## Prerequisites
 
-- Previous step(s) completed and committed.
+- Previous step(s) completed, committed, and pushed.
 - Any tools/services that must be running.
 
 ## Scope
@@ -68,20 +68,35 @@ Constraints, snippets, pitfalls, security reminders.
 # commands the agent must run
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (one example there). Subject and body for **this** step:
 
-```text
-type(step-NN): description
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Why this change matters.
+feat(scope): short imperative summary
 ```
+
+**Body:**
+
+```text
+Why this change matters and what it unlocks.
+
+STEP-NN
+```
+
+**Required actions:**
+
+- [ ] Update `STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with subject + body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start the next step
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-What the next step can assume is true. Any landmines, TODOs left intentional, env vars added, etc.
+What the next step can assume is true.

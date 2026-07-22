@@ -80,22 +80,38 @@ Display like FORGE-1 can use project key + number; store integer issue_number.
 go test ./internal/issue/...
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-22): add issue creation, list, and detail
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-22 so the next agent can continue from a green tree.
+feat(issues): add issue create, list, and detail
 ```
+
+**Body:**
+
+```text
+Allocate per-project issue numbers and ship core issue pages so work
+can be tracked inside each project.
+
+STEP-22
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-23
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Issue number allocation strategy: ____. Default status: Backlog.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-23.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-23.

@@ -77,22 +77,38 @@ go test ./internal/auth/...
 # manual login/logout via browser
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-12): add session auth with login and logout
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-12 so the next agent can continue from a green tree.
+feat(auth): add session-based login and logout
 ```
+
+**Body:**
+
+```text
+Server-side sessions let users stay signed in without JWTs, matching
+the auth spec and unblocking protected application routes.
+
+STEP-12
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-13
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Cookie name in dev: forgeboard_session. Session TTL: 7 days.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-13.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-13.

@@ -82,40 +82,31 @@ ls cmd/web internal
 
 ## Commit & push (mandatory)
 
-The agent **must** commit and push before stopping. Completing this step includes publishing to `origin` — do not wait for a separate human “please commit” message.
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-**Subject (required):**
+**Subject:**
 
 ```text
-chore(step-01): bootstrap Go module and package layout
+chore(repo): bootstrap Go module and package layout
 ```
 
-**Body (recommended):**
+**Body:**
 
 ```text
-Complete STEP-01 so the next agent can continue from a green tree.
+Establish a compilable module and empty internal packages so later
+steps drop code into a predictable modular-monolith layout.
+
+STEP-01
 ```
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` for this step → `done`
-- [ ] Stage only this step’s files (+ `STATUS.md` and the step file if status/checkboxes changed)
-- [ ] Create exactly one commit with the subject above (HEREDOC)
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
 - [ ] `git push -u origin HEAD`
-- [ ] Confirm `git status` is clean and not ahead of `origin`
+- [ ] Confirm clean / not ahead of `origin`
 - [ ] Stop — do not start STEP-02
-
-```bash
-git add <paths for this step> docs/implementation/STATUS.md
-git commit -m "$(cat <<'EOF'
-chore(step-01): bootstrap Go module and package layout
-
-Complete STEP-01 so the next agent can continue from a green tree.
-EOF
-)"
-git push -u origin HEAD
-git status
-```
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 

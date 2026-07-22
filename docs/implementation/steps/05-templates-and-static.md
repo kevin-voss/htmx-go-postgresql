@@ -75,22 +75,38 @@ go test ./internal/platform/render/...
 go build ./...
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-05): add html/template rendering and embedded static files
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-05 so the next agent can continue from a green tree.
+feat(web): add template rendering and static file serving
 ```
+
+**Body:**
+
+```text
+Introduce html/template layouts and /static assets as the shared
+rendering platform for full pages and future HTMX fragments.
+
+STEP-05
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-06
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 How to add a page: ____. Static URL prefix: /static/.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-06.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-06.

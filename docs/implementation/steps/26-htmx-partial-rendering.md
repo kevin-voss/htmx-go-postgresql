@@ -75,22 +75,38 @@ ls web/static/vendor/htmx-4.0.0-beta5.min.js
 go test ./internal/platform/...
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-26): vendor HTMX 4 and add partial rendering helpers
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-26 so the next agent can continue from a green tree.
+feat(htmx): vendor HTMX 4 and partial render helpers
 ```
+
+**Body:**
+
+```text
+Pin HTMX locally and distinguish full vs partial responses so later
+steps can swap fragments safely.
+
+STEP-26
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-27
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Pinned path: /static/vendor/htmx-4.0.0-beta5.min.js. First dual-mode route: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-27.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-27.

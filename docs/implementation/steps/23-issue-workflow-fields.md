@@ -77,22 +77,38 @@ No drag-and-drop JS.
 go test ./internal/issue/...
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-23): add issue status, priority, assignee, and archive
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-23 so the next agent can continue from a green tree.
+feat(issues): add status, priority, assignee, and archive
 ```
+
+**Body:**
+
+```text
+Support the v1 workflow with buttons/selects so issues can move and
+be owned without drag-and-drop complexity.
+
+STEP-23
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-24
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Priority enum: ____. Archive semantics: soft flag.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-24.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-24.

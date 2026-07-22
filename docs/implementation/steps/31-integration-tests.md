@@ -75,22 +75,38 @@ Tests must not require manual UI. Use testcontainers or compose run as already p
 make test
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-test(step-31): add integration tests for authz and repositories
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-31 so the next agent can continue from a green tree.
+test(integration): add authz and repository integration tests
 ```
+
+**Body:**
+
+```text
+Prove workspace isolation and persistence against Postgres so make test
+is a credible quality gate.
+
+STEP-31
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-32
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 How to run tests: make test. Special env vars: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-32.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-32.

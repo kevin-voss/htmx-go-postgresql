@@ -81,22 +81,38 @@ go test ./internal/auth/...
 # manual: register via form
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-11): add users table and registration flow
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-11 so the next agent can continue from a green tree.
+feat(auth): add user registration with validation
 ```
+
+**Body:**
+
+```text
+Persist users with normalized emails and hashed passwords so accounts
+can be created through the public registration flow.
+
+STEP-11
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-12
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 If session not yet created on register, note that step 12 must wire it. User columns: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-12.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-12.

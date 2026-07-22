@@ -76,22 +76,38 @@ go test ./internal/platform/middleware/...
 go test ./internal/auth/...
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-13): add auth middleware and CSRF protection
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-13 so the next agent can continue from a green tree.
+feat(auth): add auth middleware and CSRF protection
 ```
+
+**Body:**
+
+```text
+Protect /app and state-changing forms so unauthenticated and forged
+requests cannot reach privileged handlers.
+
+STEP-13
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-14
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Context key for user: ____. CSRF field name: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-14.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-14.

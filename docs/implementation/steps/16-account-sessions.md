@@ -72,22 +72,38 @@ go test ./internal/auth/...
 # manual revoke check
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-16): add account sessions management page
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-16 so the next agent can continue from a green tree.
+feat(auth): add account session management page
 ```
+
+**Body:**
+
+```text
+Let users inspect and revoke active sessions, demonstrating secure
+session hygiene in the portfolio demo.
+
+STEP-16
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-17
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 M2 complete. Next: workspaces.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-17.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-17.

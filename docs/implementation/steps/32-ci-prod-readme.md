@@ -82,22 +82,38 @@ docker build --target production -t forgeboard:prod .
 # manual DoD walkthrough
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-chore(step-32): add CI, production image, and portfolio README
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-32 so the next agent can continue from a green tree.
+chore(release): add CI, production image, and portfolio README
 ```
+
+**Body:**
+
+```text
+Package the project for review with automated tests, a production
+image target, and clone-to-demo documentation.
+
+STEP-32
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start further implementation steps
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Project implementation plan complete. Validate against DEFINITION_OF_DONE.md.
+Project implementation plan complete. Validate against [DEFINITION_OF_DONE.md](../../DEFINITION_OF_DONE.md).
 
-After commit, mark this step `done` in any tracker and **stop** — do not start — (project complete pending DoD walkthrough).
+After a successful push, mark this step `done` and **stop** — no further implementation steps.

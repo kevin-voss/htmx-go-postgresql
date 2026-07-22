@@ -74,22 +74,38 @@ Keep the first viewport simple: brand, one headline, short support line, CTA gro
 curl -s localhost:8080/ | grep -i forgeboard
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-09): add public landing page
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-09 so the next agent can continue from a green tree.
+feat(landing): add public Forgeboard landing page
 ```
+
+**Body:**
+
+```text
+Give visitors a branded entry point with clear register/login CTAs
+before authentication features exist.
+
+STEP-09
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-10
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 M1 complete. Next: password service and registration.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-10.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-10.

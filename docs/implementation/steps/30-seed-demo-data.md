@@ -73,22 +73,38 @@ make seed
 # login as demo user
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-30): add seed command and demo account
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-30 so the next agent can continue from a green tree.
+feat(seed): add demo account and seed command
 ```
+
+**Body:**
+
+```text
+Provide make seed data so portfolio reviewers can explore a populated
+workspace without manual setup.
+
+STEP-30
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-31
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Demo email/password: ____. Idempotency: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-31.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-31.

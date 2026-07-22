@@ -76,22 +76,38 @@ make dev
 # then curl localhost:8080/health
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-chore(step-08): add Makefile and development entrypoint
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-08 so the next agent can continue from a green tree.
+chore(dx): add Makefile and migrate-then-run entrypoint
 ```
+
+**Body:**
+
+```text
+Make clone-to-running a single make dev flow, including automatic
+migrations before the web process starts.
+
+STEP-08
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-09
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Primary DX command is make dev. Seed target may stub until step 30.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-09.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-09.

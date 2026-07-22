@@ -76,22 +76,38 @@ go test ./internal/member/...
 go test ./internal/workspace/...
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-18): add workspace membership and role authorization
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-18 so the next agent can continue from a green tree.
+feat(authz): add workspace membership and role checks
 ```
+
+**Body:**
+
+```text
+Enforce Owner/Member/Viewer permissions and fail closed across
+workspaces so authorization is real, not cosmetic.
+
+STEP-18
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-19
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Role constants: ____. 403 vs 404 policy: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-19.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-19.

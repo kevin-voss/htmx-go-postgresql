@@ -72,22 +72,38 @@ If projects migration is introduced here, step 21 extends rather than recreates.
 # manual: fresh register → onboarding → project
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-19): add first-time workspace and project onboarding
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-19 so the next agent can continue from a green tree.
+feat(onboarding): add first-time workspace and project setup
 ```
+
+**Body:**
+
+```text
+Guide users without memberships through a minimal create flow so the
+happy path reaches a usable project quickly.
+
+STEP-19
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-20
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Project table status: created in this step / deferred. Onboarding route: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-20.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-20.

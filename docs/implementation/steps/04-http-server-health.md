@@ -79,22 +79,38 @@ go test ./internal/app/...
 # or: go run ./cmd/web & curl -i localhost:8080/health
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-04): add net/http server with health and graceful shutdown
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-04 so the next agent can continue from a green tree.
+feat(server): add net/http server with health and shutdown
 ```
+
+**Body:**
+
+```text
+Expose a production-shaped ServeMux process with /health and graceful
+shutdown so Compose and later routes can mount safely.
+
+STEP-04
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-05
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 /health works. Ready for templates/static.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-05.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-05.

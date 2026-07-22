@@ -11,7 +11,7 @@ The original monolithic draft lives at [`../project-specs.md`](../project-specs.
 | Audience | Start here |
 | -------- | ---------- |
 | Human reader / portfolio reviewer | [specs/product.md](specs/product.md) → [architecture/overview.md](architecture/overview.md) |
-| AI agent implementing the app | [AGENT_GUIDE.md](AGENT_GUIDE.md) → [implementation/README.md](implementation/README.md) |
+| AI agent implementing the app | [implementation/PROMPT.md](implementation/PROMPT.md) → [AGENT_GUIDE.md](AGENT_GUIDE.md) |
 | Understanding a user journey | [examples/flows/](examples/flows/) |
 | Checking “are we done?” | [DEFINITION_OF_DONE.md](DEFINITION_OF_DONE.md) |
 

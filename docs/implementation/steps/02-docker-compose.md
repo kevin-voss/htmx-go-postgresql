@@ -77,22 +77,38 @@ docker compose up -d database mailpit
 curl -sf http://localhost:8025 >/dev/null
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-chore(step-02): add Docker Compose for app, Postgres, Mailpit
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-02 so the next agent can continue from a green tree.
+chore(docker): add Compose for app, Postgres, and Mailpit
 ```
+
+**Body:**
+
+```text
+Give every later step a shared local stack for the database and
+development email without installing services on the host.
+
+STEP-02
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-03
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Compose file path is compose.yaml. App service may not serve HTTP yet.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-03.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-03.

@@ -78,22 +78,38 @@ go test ./internal/comment/...
 # manual multi-target update
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-28): add comments with multi-target hx-partial updates
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-28 so the next agent can continue from a green tree.
+feat(comments): add multi-target hx-partial comment posts
 ```
+
+**Body:**
+
+```text
+Append comments, update counts, and clear the form in one response to
+satisfy the multi-target HTMX definition-of-done requirement.
+
+STEP-28
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-29
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 M5 complete. Comment delete policy: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-29.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-29.

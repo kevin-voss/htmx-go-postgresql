@@ -78,22 +78,38 @@ make dev
 # register user, open Mailpit :8025, click link
 ```
 
-## Commit
+## Commit & push (mandatory)
 
-**Subject (required):**
+Use the commit command shape from [AGENT_GUIDE.md](../../AGENT_GUIDE.md) (single example there). Subject and body for **this** step:
 
-```text
-feat(step-14): add Mailpit mailer and email verification
-```
-
-**Body (optional):**
+**Subject:**
 
 ```text
-Complete STEP-14 so the next agent can continue from a green tree.
+feat(mail): add Mailpit mailer and email verification
 ```
+
+**Body:**
+
+```text
+Send verification messages in development and mark emails verified so
+account trust can grow without a real SMTP provider yet.
+
+STEP-14
+```
+
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` → `done`
+- [ ] Stage this step’s files + `STATUS.md`
+- [ ] Commit with the subject and body above
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm clean / not ahead of `origin`
+- [ ] Stop — do not start STEP-15
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
 Verify route shape: ____. Token TTL: ____.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-15.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-15.
