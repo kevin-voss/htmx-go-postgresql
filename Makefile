@@ -29,7 +29,7 @@ reset:
 
 .PHONY: test
 test:
-	$(COMPOSE) run --rm app go test ./...
+	$(COMPOSE) run --rm app sh -c "go run ./cmd/migrate up && go test ./..."
 
 .PHONY: lint
 lint:

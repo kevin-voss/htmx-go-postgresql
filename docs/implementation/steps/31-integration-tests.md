@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-31` |
 | Milestone | M6 — Portfolio quality |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-30 |
 | Unlocks | STEP-32 |
 | Estimated scope | L |
@@ -107,6 +107,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-How to run tests: make test. Special env vars: ____.
+How to run tests: `make test` (Compose migrates, then `go test ./...`). `DATABASE_URL` is set by Compose; local runs default to `postgres://forgeboard:forgeboard@localhost:5432/forgeboard?sslmode=disable`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-32.

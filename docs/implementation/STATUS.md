@@ -34,7 +34,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 28 | Comments multi-partial | `done` | |
 | 29 | Activity feed | `done` | |
 | 30 | Seed demo data | `done` | |
-| 31 | Integration tests | `todo` | |
+| 31 | Integration tests | `done` | |
 | 32 | CI, prod image, README | `todo` | |
 
 **Next step for an agent:** lowest-numbered row still `todo`.
