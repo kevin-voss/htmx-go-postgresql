@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-07` |
 | Milestone | M1 — Foundation |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-06 |
 | Unlocks | STEP-08 |
 | Estimated scope | M |
@@ -111,6 +111,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Migration naming scheme: ____. Pool injected into Application.
+Migration naming scheme: `NNNNN_snake_case.sql` (e.g. `00001_enable_pgcrypto.sql`). Pool injected into Application.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-08.

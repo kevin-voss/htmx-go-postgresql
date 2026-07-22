@@ -10,7 +10,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 04 | HTTP server, health, shutdown | `done` | |
 | 05 | Templates & static files | `done` | |
 | 06 | CSS foundation | `done` | |
-| 07 | DB pool & migrations | `todo` | |
+| 07 | DB pool & migrations | `done` | |
 | 08 | Makefile & `make dev` | `todo` | |
 | 09 | Landing page | `todo` | |
 | 10 | Argon2id password service | `todo` | |

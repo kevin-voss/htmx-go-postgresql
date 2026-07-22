@@ -17,6 +17,7 @@ func TestStaticPing(t *testing.T) {
 	application := app.New(
 		config.Config{Env: "test", Address: ":0"},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		nil,
 	)
 
 	req := httptest.NewRequest(http.MethodGet, "/static/ping.txt", nil)

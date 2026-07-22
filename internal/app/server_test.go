@@ -15,6 +15,7 @@ func TestRunGracefulShutdown(t *testing.T) {
 	application := app.New(
 		config.Config{Env: "test", Address: "127.0.0.1:0"},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		nil,
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())

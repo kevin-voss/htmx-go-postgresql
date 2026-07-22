@@ -3,6 +3,8 @@ package app
 import (
 	"log/slog"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
 )
 
@@ -10,12 +12,14 @@ import (
 type Application struct {
 	Config config.Config
 	Logger *slog.Logger
+	DB     *pgxpool.Pool
 }
 
-// New constructs an Application with the given config and logger.
-func New(cfg config.Config, logger *slog.Logger) *Application {
+// New constructs an Application with the given config, logger, and database pool.
+func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application {
 	return &Application{
 		Config: cfg,
 		Logger: logger,
+		DB:     db,
 	}
 }

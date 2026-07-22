@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/kevin-voss/htmx-go-postgresql/internal/database"
 )
 
 const shutdownTimeout = 10 * time.Second
@@ -42,14 +44,19 @@ func (a *Application) Run(ctx context.Context) error {
 
 	select {
 	case err := <-errCh:
+		database.Close(a.DB)
 		return err
 	case <-ctx.Done():
 		a.Logger.Info("shutting down http server")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
+			database.Close(a.DB)
 			return err
 		}
-		return <-errCh
+		err := <-errCh
+		database.Close(a.DB)
+		a.Logger.Info("database pool closed")
+		return err
 	}
 }
