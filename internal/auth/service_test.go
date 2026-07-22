@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidateRegisterOK(t *testing.T) {
@@ -103,11 +104,69 @@ func (s *stubUserStore) GetByEmail(_ context.Context, email string) (User, error
 	return User{}, ErrNotFound
 }
 
+type stubSessionStore struct {
+	byHash map[string]Session
+	create func(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error)
+}
+
+func (s *stubSessionStore) CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) (Session, error) {
+	if s.create != nil {
+		return s.create(ctx, userID, tokenHash, expiresAt, userAgent, ipAddress)
+	}
+	sess := Session{
+		ID:         "s1",
+		UserID:     userID,
+		TokenHash:  tokenHash,
+		CreatedAt:  time.Now().UTC(),
+		LastSeenAt: time.Now().UTC(),
+		ExpiresAt:  expiresAt,
+		UserAgent:  userAgent,
+		IPAddress:  ipAddress,
+	}
+	if s.byHash == nil {
+		s.byHash = map[string]Session{}
+	}
+	s.byHash[tokenHash] = sess
+	return sess, nil
+}
+
+func (s *stubSessionStore) GetSessionByTokenHash(_ context.Context, tokenHash string) (Session, error) {
+	if sess, ok := s.byHash[tokenHash]; ok {
+		return sess, nil
+	}
+	return Session{}, ErrNotFound
+}
+
+func (s *stubSessionStore) RevokeSessionByTokenHash(_ context.Context, tokenHash string) error {
+	sess, ok := s.byHash[tokenHash]
+	if !ok {
+		return ErrNotFound
+	}
+	now := time.Now().UTC()
+	sess.RevokedAt = &now
+	s.byHash[tokenHash] = sess
+	return nil
+}
+
+func (s *stubSessionStore) TouchSession(_ context.Context, id string, at time.Time) error {
+	for hash, sess := range s.byHash {
+		if sess.ID == id {
+			if sess.RevokedAt != nil {
+				return ErrNotFound
+			}
+			sess.LastSeenAt = at
+			s.byHash[hash] = sess
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
 func TestServiceRegisterNormalizesEmailAndHashesPassword(t *testing.T) {
 	t.Parallel()
 
 	store := &stubUserStore{}
-	svc := NewService(store)
+	svc := NewService(store, &stubSessionStore{})
 
 	user, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "  Ada  ",
@@ -145,7 +204,7 @@ func TestServiceRegisterDuplicateEmail(t *testing.T) {
 			"ada@example.com": {ID: "existing", Email: "ada@example.com"},
 		},
 	}
-	svc := NewService(store)
+	svc := NewService(store, &stubSessionStore{})
 
 	_, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",
@@ -170,7 +229,7 @@ func TestServiceRegisterCreateRaceDuplicate(t *testing.T) {
 			return User{}, ErrDuplicateEmail
 		},
 	}
-	svc := NewService(store)
+	svc := NewService(store, &stubSessionStore{})
 
 	_, errs, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",
@@ -196,7 +255,7 @@ func TestServiceRegisterPropagatesStoreErrors(t *testing.T) {
 			return User{}, boom
 		},
 	}
-	svc := NewService(store)
+	svc := NewService(store, &stubSessionStore{})
 
 	_, _, err := svc.Register(context.Background(), RegisterInput{
 		DisplayName:          "Ada",

@@ -48,14 +48,15 @@ func (e RegisterErrors) Any() bool {
 		e.Terms != ""
 }
 
-// Service implements registration business rules.
+// Service implements auth business rules (registration, login, sessions).
 type Service struct {
-	users UserStore
+	users    UserStore
+	sessions SessionStore
 }
 
 // NewService constructs an auth service.
-func NewService(users UserStore) *Service {
-	return &Service{users: users}
+func NewService(users UserStore, sessions SessionStore) *Service {
+	return &Service{users: users, sessions: sessions}
 }
 
 // Register validates input, hashes the password, and persists a new user.

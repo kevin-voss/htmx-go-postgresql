@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -8,19 +9,23 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 )
 
+const invalidCredentialsMessage = "Invalid email or password."
+
 // Handler serves auth HTTP endpoints.
 type Handler struct {
-	service *Service
-	render  *render.Renderer
-	logger  *slog.Logger
+	service      *Service
+	render       *render.Renderer
+	logger       *slog.Logger
+	cookieSecure bool
 }
 
 // NewHandler constructs an auth HTTP handler.
-func NewHandler(service *Service, renderer *render.Renderer, logger *slog.Logger) *Handler {
+func NewHandler(service *Service, renderer *render.Renderer, logger *slog.Logger, cookieSecure bool) *Handler {
 	return &Handler{
-		service: service,
-		render:  renderer,
-		logger:  logger,
+		service:      service,
+		render:       renderer,
+		logger:       logger,
+		cookieSecure: cookieSecure,
 	}
 }
 
@@ -28,6 +33,9 @@ func NewHandler(service *Service, renderer *render.Renderer, logger *slog.Logger
 func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /register", h.showRegister)
 	mux.HandleFunc("POST /register", h.register)
+	mux.HandleFunc("GET /login", h.showLogin)
+	mux.HandleFunc("POST /login", h.login)
+	mux.HandleFunc("POST /logout", h.logout)
 }
 
 type registerPageData struct {
@@ -39,6 +47,15 @@ type registerFormData struct {
 	DisplayName string
 	Email       string
 	AcceptTerms bool
+}
+
+type loginPageData struct {
+	Form  loginFormData
+	Error string
+}
+
+type loginFormData struct {
+	Email string
 }
 
 func (h *Handler) showRegister(w http.ResponseWriter, r *http.Request) {
@@ -77,14 +94,79 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Session creation is deferred to STEP-12; redirect stub until then.
+	_, rawToken, err := h.service.CreateSession(r.Context(), CreateSessionInput{
+		UserID:    user.ID,
+		UserAgent: r.UserAgent(),
+		IPAddress: ClientIP(r),
+	})
+	if err != nil {
+		h.logger.Error("create session after register failed", "err", err, "user_id", user.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	SetSessionCookie(w, rawToken, h.cookieSecure)
 	h.logger.Info("user registered", "user_id", user.ID, "email", user.Email)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
+	h.renderLogin(w, http.StatusOK, loginPageData{})
+}
+
+func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	email := r.FormValue("email")
+	_, rawToken, err := h.service.Login(r.Context(), LoginInput{
+		Email:     email,
+		Password:  r.FormValue("password"),
+		UserAgent: r.UserAgent(),
+		IPAddress: ClientIP(r),
+	})
+	if err != nil {
+		if errors.Is(err, ErrInvalidCredentials) {
+			h.renderLogin(w, http.StatusUnprocessableEntity, loginPageData{
+				Form:  loginFormData{Email: strings.ToLower(strings.TrimSpace(email))},
+				Error: invalidCredentialsMessage,
+			})
+			return
+		}
+		h.logger.Error("login failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	SetSessionCookie(w, rawToken, h.cookieSecure)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie(SessionCookieName(h.cookieSecure)); err == nil {
+		if err := h.service.Logout(r.Context(), c.Value); err != nil {
+			h.logger.Error("logout revoke failed", "err", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	ClearSessionCookie(w, h.cookieSecure)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (h *Handler) renderRegister(w http.ResponseWriter, status int, data registerPageData) {
 	if err := h.render.Render(w, status, "register", data); err != nil {
 		h.logger.Error("render register failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) renderLogin(w http.ResponseWriter, status int, data loginPageData) {
+	if err := h.render.Render(w, status, "login", data); err != nil {
+		h.logger.Error("render login failed", "err", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

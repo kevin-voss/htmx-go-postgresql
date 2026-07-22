@@ -28,10 +28,12 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		panic("render templates: " + err.Error())
 	}
 
+	repo := auth.NewRepository(db)
 	authHandler := auth.NewHandler(
-		auth.NewService(auth.NewRepository(db)),
+		auth.NewService(repo, repo),
 		renderer,
 		logger,
+		cfg.CookieSecure,
 	)
 
 	return &Application{
