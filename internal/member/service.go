@@ -11,6 +11,7 @@ type Store interface {
 	Create(ctx context.Context, workspaceID, userID string, role Role) (Membership, error)
 	GetByWorkspaceAndUser(ctx context.Context, workspaceID, userID string) (Membership, error)
 	GetAccessBySlug(ctx context.Context, slug, userID string) (Access, error)
+	HasAny(ctx context.Context, userID string) (bool, error)
 }
 
 // Service implements membership lookups and role helpers.
@@ -47,4 +48,17 @@ func (s *Service) AddMember(ctx context.Context, workspaceID, userID string, rol
 		return Membership{}, err
 	}
 	return m, nil
+}
+
+// HasAnyMembership reports whether the user belongs to at least one workspace.
+func (s *Service) HasAnyMembership(ctx context.Context, userID string) (bool, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return false, nil
+	}
+	ok, err := s.store.HasAny(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
 }

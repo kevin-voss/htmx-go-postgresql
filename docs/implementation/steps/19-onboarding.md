@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-19` |
 | Milestone | M3 — Workspaces |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-18 |
 | Unlocks | STEP-20 |
 | Estimated scope | M |
@@ -43,9 +43,9 @@ Implement the onboarding flow. Creating the first project may introduce a thin p
 
 ## Implementation checklist
 
-- [ ] Onboarding routes/UI
-- [ ] Transactional create
-- [ ] Skip onboarding if already member
+- [x] Onboarding routes/UI
+- [x] Transactional create
+- [x] Skip onboarding if already member
 
 ## Files to create / modify
 
@@ -61,10 +61,10 @@ If projects migration is introduced here, step 21 extends rather than recreates.
 
 ## Acceptance criteria
 
-- [ ] New user without memberships lands in onboarding
-- [ ] Completing onboarding creates workspace, Owner membership, and first project
-- [ ] User with memberships does not see onboarding gate
-- [ ] Only required fields are asked
+- [x] New user without memberships lands in onboarding
+- [x] Completing onboarding creates workspace, Owner membership, and first project
+- [x] User with memberships does not see onboarding gate
+- [x] Only required fields are asked
 
 ## Verification
 
@@ -93,17 +93,17 @@ STEP-19
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-20
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-20
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Project table status: created in this step / deferred. Onboarding route: ____.
+Project table status: **created** in this step (`db/migrations/00008_projects.sql`). Onboarding route: `GET/POST /app/onboarding`. Login/register redirect to `/app`, which gates users without memberships to onboarding. Completing onboarding creates workspace + Owner membership + project in one transaction and redirects to `/w/{workspaceSlug}/projects/{projectSlug}` (thin `project_show` page). Project slug is derived from the project name via `project.SlugFromName`. STEP-21 should extend the project module (list/create/archive) rather than recreating the table.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-20.

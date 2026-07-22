@@ -33,6 +33,10 @@ func (s *resolveStore) GetAccessBySlug(_ context.Context, slug, userID string) (
 	return a, nil
 }
 
+func (s *resolveStore) HasAny(context.Context, string) (bool, error) {
+	return len(s.access) > 0, nil
+}
+
 func TestRequireMembershipOutsiderForbiddenAsNotFound(t *testing.T) {
 	t.Parallel()
 

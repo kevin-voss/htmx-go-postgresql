@@ -190,7 +190,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 
 	SetSessionCookie(w, rawToken, h.cookieSecure)
 	h.logger.Info("user registered", "user_id", user.ID, "email", user.Email)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/app", http.StatusSeeOther)
 }
 
 func (h *Handler) verifyEmail(w http.ResponseWriter, r *http.Request) {
@@ -252,7 +252,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	h.loginLimit.Reset(ip)
 	SetSessionCookie(w, rawToken, h.cookieSecure)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/app", http.StatusSeeOther)
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {

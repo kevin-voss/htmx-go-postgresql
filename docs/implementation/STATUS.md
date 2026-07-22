@@ -22,7 +22,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 16 | Account sessions | `done` | |
 | 17 | Workspaces | `done` | |
 | 18 | Membership & roles | `done` | |
-| 19 | Onboarding | `todo` | |
+| 19 | Onboarding | `done` | |
 | 20 | Invitations & members | `todo` | |
 | 21 | Projects | `todo` | |
 | 22 | Issues core | `todo` | |

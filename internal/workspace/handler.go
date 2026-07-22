@@ -31,6 +31,8 @@ func NewHandler(service *Service, members *member.Service, renderer *render.Rend
 
 // Mount registers workspace routes on mux (all require authentication).
 func (h *Handler) Mount(mux *http.ServeMux) {
+	mux.Handle("GET /app/onboarding", auth.RequireAuthentication(http.HandlerFunc(h.showOnboarding)))
+	mux.Handle("POST /app/onboarding", auth.RequireAuthentication(http.HandlerFunc(h.completeOnboarding)))
 	mux.Handle("GET /app/workspaces/new", auth.RequireAuthentication(http.HandlerFunc(h.showNew)))
 	mux.Handle("POST /app/workspaces/new", auth.RequireAuthentication(http.HandlerFunc(h.create)))
 
@@ -59,6 +61,18 @@ type createFormData struct {
 	Slug string
 }
 
+type onboardingPageData struct {
+	CSRFToken string
+	Form      onboardingFormData
+	Errors    OnboardErrors
+}
+
+type onboardingFormData struct {
+	Name        string
+	Slug        string
+	ProjectName string
+}
+
 type homePageData struct {
 	CSRFToken string
 	Workspace Workspace
@@ -70,6 +84,91 @@ type settingsPageData struct {
 	CSRFToken string
 	Workspace Workspace
 	User      auth.User
+}
+
+func (h *Handler) showOnboarding(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	has, err := h.members.HasAnyMembership(r.Context(), user.ID)
+	if err != nil {
+		h.logger.Error("check memberships failed", "err", err, "user_id", user.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if has {
+		http.Redirect(w, r, "/app", http.StatusSeeOther)
+		return
+	}
+
+	h.renderOnboarding(w, http.StatusOK, onboardingPageData{
+		CSRFToken: middleware.CSRFToken(r.Context()),
+	})
+}
+
+func (h *Handler) completeOnboarding(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	has, err := h.members.HasAnyMembership(r.Context(), user.ID)
+	if err != nil {
+		h.logger.Error("check memberships failed", "err", err, "user_id", user.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if has {
+		http.Redirect(w, r, "/app", http.StatusSeeOther)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	result, fieldErrs, err := h.service.Onboard(r.Context(), OnboardInput{
+		Name:        r.FormValue("name"),
+		Slug:        r.FormValue("slug"),
+		ProjectName: r.FormValue("project_name"),
+		CreatedBy:   user.ID,
+	})
+	if err != nil {
+		h.logger.Error("onboarding failed", "err", err, "user_id", user.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if fieldErrs.Any() {
+		h.renderOnboarding(w, http.StatusUnprocessableEntity, onboardingPageData{
+			CSRFToken: middleware.CSRFToken(r.Context()),
+			Form: onboardingFormData{
+				Name:        strings.TrimSpace(r.FormValue("name")),
+				Slug:        strings.ToLower(strings.TrimSpace(r.FormValue("slug"))),
+				ProjectName: strings.TrimSpace(r.FormValue("project_name")),
+			},
+			Errors: fieldErrs,
+		})
+		return
+	}
+
+	h.logger.Info(
+		"onboarding completed",
+		"workspace_id", result.Workspace.ID,
+		"slug", result.Workspace.Slug,
+		"project_id", result.ProjectID,
+		"user_id", user.ID,
+	)
+	http.Redirect(
+		w,
+		r,
+		"/w/"+result.Workspace.Slug+"/projects/"+result.ProjectSlug,
+		http.StatusSeeOther,
+	)
 }
 
 func (h *Handler) showNew(w http.ResponseWriter, r *http.Request) {
@@ -166,6 +265,13 @@ func workspaceFromAccessContext(r *http.Request) (Workspace, bool) {
 		return Workspace{}, false
 	}
 	return Workspace{ID: id, Name: name, Slug: slug}, true
+}
+
+func (h *Handler) renderOnboarding(w http.ResponseWriter, status int, data onboardingPageData) {
+	if err := h.render.Render(w, status, "onboarding", data); err != nil {
+		h.logger.Error("render onboarding failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func (h *Handler) renderNew(w http.ResponseWriter, status int, data newPageData) {

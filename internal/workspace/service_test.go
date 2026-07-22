@@ -100,6 +100,19 @@ func (s *stubStore) GetBySlug(ctx context.Context, slug string) (Workspace, erro
 	return w, nil
 }
 
+func (s *stubStore) Onboard(ctx context.Context, name, slug, createdBy, projectName, projectSlug string) (OnboardResult, error) {
+	w, err := s.Create(ctx, name, slug, createdBy)
+	if err != nil {
+		return OnboardResult{}, err
+	}
+	return OnboardResult{
+		Workspace:   w,
+		ProjectID:   "p1",
+		ProjectName: projectName,
+		ProjectSlug: projectSlug,
+	}, nil
+}
+
 func TestCreateNormalizesAndPersists(t *testing.T) {
 	t.Parallel()
 
@@ -188,5 +201,47 @@ func TestGetBySlugNotFound(t *testing.T) {
 	_, err := svc.GetBySlug(context.Background(), "missing")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestOnboardCreatesWorkspaceAndProject(t *testing.T) {
+	t.Parallel()
+
+	store := &stubStore{}
+	svc := NewService(store)
+
+	result, errs, err := svc.Onboard(context.Background(), OnboardInput{
+		Name:        "  Acme Corp  ",
+		Slug:        "  Acme-Corp  ",
+		ProjectName: "  Launch Board  ",
+		CreatedBy:   "user-1",
+	})
+	if err != nil {
+		t.Fatalf("Onboard: %v", err)
+	}
+	if errs.Any() {
+		t.Fatalf("unexpected field errors: %+v", errs)
+	}
+	if result.Workspace.Slug != "acme-corp" {
+		t.Fatalf("workspace slug = %q, want acme-corp", result.Workspace.Slug)
+	}
+	if result.ProjectName != "Launch Board" {
+		t.Fatalf("project name = %q, want Launch Board", result.ProjectName)
+	}
+	if result.ProjectSlug != "launch-board" {
+		t.Fatalf("project slug = %q, want launch-board", result.ProjectSlug)
+	}
+}
+
+func TestValidateOnboardRequiresProjectName(t *testing.T) {
+	t.Parallel()
+
+	errs := ValidateOnboard(OnboardInput{
+		Name:        "Acme",
+		Slug:        "acme",
+		ProjectName: "A",
+	})
+	if errs.ProjectName == "" {
+		t.Fatal("want project name error")
 	}
 }

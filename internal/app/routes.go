@@ -16,6 +16,7 @@ func (a *Application) Routes() http.Handler {
 	mux.HandleFunc("GET /health", a.health)
 	a.Auth.Mount(mux)
 	a.Workspace.Mount(mux)
+	a.Project.Mount(mux)
 
 	staticRoot, err := fs.Sub(web.Static, "static")
 	if err != nil {
@@ -53,7 +54,23 @@ type appPageData struct {
 }
 
 func (a *Application) appDashboard(w http.ResponseWriter, r *http.Request) {
-	user, _ := auth.UserFromContext(r.Context())
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	has, err := a.Members.HasAnyMembership(r.Context(), user.ID)
+	if err != nil {
+		a.Logger.Error("check memberships failed", "err", err, "user_id", user.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if !has {
+		http.Redirect(w, r, "/app/onboarding", http.StatusSeeOther)
+		return
+	}
+
 	data := appPageData{
 		CSRFToken: middleware.CSRFToken(r.Context()),
 		User:      user,

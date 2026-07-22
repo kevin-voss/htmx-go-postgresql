@@ -33,6 +33,18 @@ func (s *stubStore) GetAccessBySlug(_ context.Context, slug, userID string) (Acc
 	return a, nil
 }
 
+func (s *stubStore) HasAny(_ context.Context, userID string) (bool, error) {
+	if s.access == nil {
+		return false, nil
+	}
+	for key := range s.access {
+		if len(key) > len(userID)+1 && key[len(key)-len(userID):] == userID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func TestResolveAccessBySlugNotFound(t *testing.T) {
 	t.Parallel()
 

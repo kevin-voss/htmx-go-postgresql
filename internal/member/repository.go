@@ -81,6 +81,20 @@ func (r *Repository) GetByWorkspaceAndUser(ctx context.Context, workspaceID, use
 	return m, nil
 }
 
+// HasAny reports whether the user belongs to at least one workspace.
+func (r *Repository) HasAny(ctx context.Context, userID string) (bool, error) {
+	const q = `
+		SELECT EXISTS (
+			SELECT 1 FROM workspace_members WHERE user_id = $1
+		)`
+
+	var ok bool
+	if err := r.db.QueryRow(ctx, q, userID).Scan(&ok); err != nil {
+		return false, fmt.Errorf("member: has any: %w", err)
+	}
+	return ok, nil
+}
+
 // GetAccessBySlug returns workspace + membership for a user by workspace slug.
 // Missing workspace or membership both yield ErrNotFound (fail closed).
 func (r *Repository) GetAccessBySlug(ctx context.Context, slug, userID string) (Access, error) {
