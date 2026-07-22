@@ -12,6 +12,7 @@
 
       <form class="stack" method="post" action="/login" novalidate>
         {{template "csrf_field" .CSRFToken}}
+        {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
         <div class="form-field">
           <label class="form-field__label" for="email">Email</label>
           <input

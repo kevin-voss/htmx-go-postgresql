@@ -17,14 +17,15 @@ import (
 
 // Application holds process dependencies for the HTTP server.
 type Application struct {
-	Config    config.Config
-	Logger    *slog.Logger
-	DB        *pgxpool.Pool
-	Render    *render.Renderer
-	Auth      *auth.Handler
-	Workspace *workspace.Handler
-	Project   *project.Handler
-	Members   *member.Service
+	Config     config.Config
+	Logger     *slog.Logger
+	DB         *pgxpool.Pool
+	Render     *render.Renderer
+	Auth       *auth.Handler
+	Workspace  *workspace.Handler
+	Project    *project.Handler
+	Members    *member.Service
+	MemberHTTP *member.Handler
 }
 
 // New constructs an Application with the given config, logger, and database pool.
@@ -54,7 +55,8 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 	)
 
 	memberRepo := member.NewRepository(db)
-	memberService := member.NewService(memberRepo)
+	memberService := member.NewService(memberRepo).WithUserLookup(member.AuthUserLookup{Users: repo})
+	memberHandler := member.NewHandler(memberService, mailer, renderer, logger)
 
 	workspaceRepo := workspace.NewRepository(db)
 	workspaceHandler := workspace.NewHandler(
@@ -73,13 +75,14 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 	)
 
 	return &Application{
-		Config:    cfg,
-		Logger:    logger,
-		DB:        db,
-		Render:    renderer,
-		Auth:      authHandler,
-		Workspace: workspaceHandler,
-		Project:   projectHandler,
-		Members:   memberService,
+		Config:     cfg,
+		Logger:     logger,
+		DB:         db,
+		Render:     renderer,
+		Auth:       authHandler,
+		Workspace:  workspaceHandler,
+		Project:    projectHandler,
+		Members:    memberService,
+		MemberHTTP: memberHandler,
 	}
 }

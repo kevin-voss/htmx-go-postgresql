@@ -46,4 +46,13 @@ func TestRoleAtLeastAndCapabilities(t *testing.T) {
 	if RoleMember.CanManageSettings() || RoleViewer.CanManageSettings() {
 		t.Fatal("non-owners must not manage settings")
 	}
+	if !RoleOwner.CanInvite() || !RoleOwner.CanManageMembers() {
+		t.Fatal("owner should invite and manage members")
+	}
+	if RoleMember.CanInvite() || RoleViewer.CanInvite() {
+		t.Fatal("non-owners must not invite")
+	}
+	if !RoleMember.Invitable() || !RoleViewer.Invitable() || RoleOwner.Invitable() {
+		t.Fatal("only member/viewer are invitable roles")
+	}
 }

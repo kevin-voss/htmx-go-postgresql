@@ -47,3 +47,18 @@ func (r Role) CanMutate() bool {
 func (r Role) CanManageSettings() bool {
 	return r == RoleOwner
 }
+
+// CanInvite reports whether r may invite members (Owner).
+func (r Role) CanInvite() bool {
+	return r == RoleOwner
+}
+
+// CanManageMembers reports whether r may change roles or remove members (Owner).
+func (r Role) CanManageMembers() bool {
+	return r == RoleOwner
+}
+
+// Invitable reports whether r is a valid invitation role (Member or Viewer).
+func (r Role) Invitable() bool {
+	return r == RoleMember || r == RoleViewer
+}

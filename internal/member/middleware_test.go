@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
@@ -14,15 +15,20 @@ import (
 )
 
 type resolveStore struct {
-	access map[string]member.Access
+	access  map[string]member.Access
+	members map[string]member.Membership
 }
 
 func (s *resolveStore) Create(context.Context, string, string, member.Role) (member.Membership, error) {
 	return member.Membership{}, nil
 }
 
-func (s *resolveStore) GetByWorkspaceAndUser(context.Context, string, string) (member.Membership, error) {
-	return member.Membership{}, member.ErrNotFound
+func (s *resolveStore) GetByWorkspaceAndUser(_ context.Context, workspaceID, userID string) (member.Membership, error) {
+	m, ok := s.members[workspaceID+"|"+userID]
+	if !ok {
+		return member.Membership{}, member.ErrNotFound
+	}
+	return m, nil
 }
 
 func (s *resolveStore) GetAccessBySlug(_ context.Context, slug, userID string) (member.Access, error) {
@@ -35,6 +41,34 @@ func (s *resolveStore) GetAccessBySlug(_ context.Context, slug, userID string) (
 
 func (s *resolveStore) HasAny(context.Context, string) (bool, error) {
 	return len(s.access) > 0, nil
+}
+
+func (s *resolveStore) ListByWorkspace(context.Context, string) ([]member.MemberView, error) {
+	return nil, nil
+}
+
+func (s *resolveStore) UpdateRole(context.Context, string, string, member.Role) error {
+	return nil
+}
+
+func (s *resolveStore) Delete(context.Context, string, string) error {
+	return nil
+}
+
+func (s *resolveStore) CreateInvitation(context.Context, string, string, member.Role, string, string, time.Time) (member.Invitation, error) {
+	return member.Invitation{}, nil
+}
+
+func (s *resolveStore) GetInvitationByTokenHash(context.Context, string) (member.Invitation, error) {
+	return member.Invitation{}, member.ErrNotFound
+}
+
+func (s *resolveStore) AcceptInvitation(context.Context, string, string, string, member.Role, time.Time) (member.Membership, error) {
+	return member.Membership{}, nil
+}
+
+func (s *resolveStore) MarkInvitationAccepted(context.Context, string, time.Time) error {
+	return nil
 }
 
 func TestRequireMembershipOutsiderForbiddenAsNotFound(t *testing.T) {
@@ -197,5 +231,118 @@ func TestRequireOwnerRejectsMember(t *testing.T) {
 
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rr.Code, http.StatusForbidden)
+	}
+}
+
+func TestViewerCannotInvite(t *testing.T) {
+	t.Parallel()
+
+	svc := member.NewService(&resolveStore{
+		access: map[string]member.Access{
+			"acme|viewer1": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership:    member.Membership{Role: member.RoleViewer, UserID: "viewer1", WorkspaceID: "w1"},
+			},
+		},
+	})
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	h := middleware.Chain(
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("viewer must not invite")
+		}),
+		member.RequireMembership(svc, logger),
+		member.RequireOwner(),
+	)
+	h = auth.RequireAuthentication(h)
+
+	req := httptest.NewRequest(http.MethodPost, "/w/acme/members/invites", nil)
+	req.SetPathValue("workspaceSlug", "acme")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), auth.User{ID: "viewer1", Email: "v@example.com"}))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusForbidden)
+	}
+}
+
+func TestMemberCannotInvite(t *testing.T) {
+	t.Parallel()
+
+	svc := member.NewService(&resolveStore{
+		access: map[string]member.Access{
+			"acme|member1": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership:    member.Membership{Role: member.RoleMember, UserID: "member1", WorkspaceID: "w1"},
+			},
+		},
+	})
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	h := middleware.Chain(
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("member must not invite")
+		}),
+		member.RequireMembership(svc, logger),
+		member.RequireOwner(),
+	)
+	h = auth.RequireAuthentication(h)
+
+	req := httptest.NewRequest(http.MethodPost, "/w/acme/members/invites", nil)
+	req.SetPathValue("workspaceSlug", "acme")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), auth.User{ID: "member1", Email: "m@example.com"}))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusForbidden)
+	}
+}
+
+func TestOwnerCanInvite(t *testing.T) {
+	t.Parallel()
+
+	svc := member.NewService(&resolveStore{
+		access: map[string]member.Access{
+			"acme|owner1": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership:    member.Membership{Role: member.RoleOwner, UserID: "owner1", WorkspaceID: "w1"},
+			},
+		},
+	})
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	called := false
+	h := middleware.Chain(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			called = true
+			w.WriteHeader(http.StatusNoContent)
+		}),
+		member.RequireMembership(svc, logger),
+		member.RequireOwner(),
+	)
+	h = auth.RequireAuthentication(h)
+
+	req := httptest.NewRequest(http.MethodPost, "/w/acme/members/invites", nil)
+	req.SetPathValue("workspaceSlug", "acme")
+	req = req.WithContext(auth.ContextWithUser(req.Context(), auth.User{ID: "owner1", Email: "o@example.com"}))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusNoContent)
+	}
+	if !called {
+		t.Fatal("expected invite handler to run for owner")
 	}
 }

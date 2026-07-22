@@ -8,6 +8,7 @@
 
       <form class="stack" method="post" action="/register" novalidate>
         {{template "csrf_field" .CSRFToken}}
+        {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
         <div class="form-field">
           <label class="form-field__label" for="display_name">Display name</label>
           <input

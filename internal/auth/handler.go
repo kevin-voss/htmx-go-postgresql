@@ -71,6 +71,7 @@ type registerPageData struct {
 	CSRFToken string
 	Form      registerFormData
 	Errors    RegisterErrors
+	Next      string
 }
 
 type registerFormData struct {
@@ -83,6 +84,7 @@ type loginPageData struct {
 	CSRFToken string
 	Form      loginFormData
 	Error     string
+	Next      string
 }
 
 type loginFormData struct {
@@ -123,6 +125,7 @@ type sessionRow struct {
 func (h *Handler) showRegister(w http.ResponseWriter, r *http.Request) {
 	h.renderRegister(w, http.StatusOK, registerPageData{
 		CSRFToken: middleware.CSRFToken(r.Context()),
+		Next:      safeNextPath(r.URL.Query().Get("next")),
 	})
 }
 
@@ -132,6 +135,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	next := safeNextPath(r.FormValue("next"))
 	in := RegisterInput{
 		DisplayName:          r.FormValue("display_name"),
 		Email:                r.FormValue("email"),
@@ -155,6 +159,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 				AcceptTerms: in.AcceptTerms,
 			},
 			Errors: fieldErrs,
+			Next:   next,
 		})
 		return
 	}
@@ -190,7 +195,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 
 	SetSessionCookie(w, rawToken, h.cookieSecure)
 	h.logger.Info("user registered", "user_id", user.ID, "email", user.Email)
-	http.Redirect(w, r, "/app", http.StatusSeeOther)
+	http.Redirect(w, r, redirectAfterAuth(next), http.StatusSeeOther)
 }
 
 func (h *Handler) verifyEmail(w http.ResponseWriter, r *http.Request) {
@@ -210,6 +215,7 @@ func (h *Handler) verifyEmail(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
 	h.renderLogin(w, http.StatusOK, loginPageData{
 		CSRFToken: middleware.CSRFToken(r.Context()),
+		Next:      safeNextPath(r.URL.Query().Get("next")),
 	})
 }
 
@@ -219,12 +225,14 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	next := safeNextPath(r.FormValue("next"))
 	ip := ClientIP(r)
 	if !h.loginLimit.Allow(ip) {
 		h.renderLogin(w, http.StatusTooManyRequests, loginPageData{
 			CSRFToken: middleware.CSRFToken(r.Context()),
 			Form:      loginFormData{Email: strings.ToLower(strings.TrimSpace(r.FormValue("email")))},
 			Error:     loginRateLimitedMessage,
+			Next:      next,
 		})
 		return
 	}
@@ -242,6 +250,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 				CSRFToken: middleware.CSRFToken(r.Context()),
 				Form:      loginFormData{Email: strings.ToLower(strings.TrimSpace(email))},
 				Error:     invalidCredentialsMessage,
+				Next:      next,
 			})
 			return
 		}
@@ -252,7 +261,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	h.loginLimit.Reset(ip)
 	SetSessionCookie(w, rawToken, h.cookieSecure)
-	http.Redirect(w, r, "/app", http.StatusSeeOther)
+	http.Redirect(w, r, redirectAfterAuth(next), http.StatusSeeOther)
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
@@ -509,6 +518,25 @@ func requestBaseURL(r *http.Request) string {
 		host = "localhost:8080"
 	}
 	return scheme + "://" + host
+}
+
+// safeNextPath allows same-origin relative redirects after login/register.
+func safeNextPath(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") {
+		return ""
+	}
+	if strings.Contains(raw, "://") || strings.ContainsAny(raw, "\r\n") {
+		return ""
+	}
+	return raw
+}
+
+func redirectAfterAuth(next string) string {
+	if next != "" {
+		return next
+	}
+	return "/app"
 }
 
 func verificationEmailBody(displayName, verifyURL string) string {

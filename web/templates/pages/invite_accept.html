@@ -1,0 +1,43 @@
+{{define "title"}}Workspace invitation — Forgeboard{{end}}
+{{define "content"}}
+<main class="page">
+  <div class="page__main">
+    <div class="stack" style="max-inline-size: 28rem;">
+      <h1>Workspace invitation</h1>
+
+      {{if .Invalid}}
+      <p role="alert">{{.Error}}</p>
+      <div class="cluster">
+        <a class="button button--primary" href="/login">Log in</a>
+        <a class="button" href="/">Home</a>
+      </div>
+
+      {{else if .Mismatch}}
+      <p>You've been invited to <strong>{{.Invite.WorkspaceName}}</strong> as <strong>{{.Invite.Role}}</strong>.</p>
+      <p role="alert">{{.Error}}</p>
+      <div class="cluster">
+        <form method="post" action="/logout">
+          {{template "csrf_field" .CSRFToken}}
+          <button class="button button--primary" type="submit">Sign out</button>
+        </form>
+        <a class="button" href="/login?next=/invites/{{.Token}}">Log in with invited email</a>
+      </div>
+
+      {{else if .Already}}
+      <p>You're already a member of <strong>{{.Invite.WorkspaceName}}</strong>.</p>
+      <div class="cluster">
+        <a class="button button--primary" href="/w/{{.Invite.WorkspaceSlug}}">Open workspace</a>
+      </div>
+
+      {{else}}
+      <p>You've been invited to join <strong>{{.Invite.WorkspaceName}}</strong> as <strong>{{.Invite.Role}}</strong>.</p>
+      <p>Invitation sent to <strong>{{.Invite.Email}}</strong>. Log in or create an account with that email to accept.</p>
+      <div class="cluster">
+        <a class="button button--primary" href="/login?next=/invites/{{.Token}}">Log in</a>
+        <a class="button" href="/register?next=/invites/{{.Token}}">Create account</a>
+      </div>
+      {{end}}
+    </div>
+  </div>
+</main>
+{{end}}

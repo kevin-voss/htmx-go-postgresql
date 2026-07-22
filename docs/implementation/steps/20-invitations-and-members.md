@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-20` |
 | Milestone | M3 — Workspaces |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-19 |
 | Unlocks | STEP-21 |
 | Estimated scope | L |
@@ -47,10 +47,10 @@ Implement invitation flow end-to-end with Mailpit. Include basic member list and
 
 ## Implementation checklist
 
-- [ ] invitations migration
-- [ ] handlers + templates
-- [ ] accept for existing + new users
-- [ ] authz tests for invite permissions
+- [x] invitations migration
+- [x] handlers + templates
+- [x] accept for existing + new users
+- [x] authz tests for invite permissions
 
 ## Files to create / modify
 
@@ -67,11 +67,11 @@ Default invited role: Member. Owner cannot be removed by non-owners.
 
 ## Acceptance criteria
 
-- [ ] Owner can send invitation email (visible in Mailpit)
-- [ ] Accepting invite creates membership
-- [ ] Members page lists members and roles
-- [ ] Viewer cannot invite
-- [ ] Invalid token handled cleanly
+- [x] Owner can send invitation email (visible in Mailpit)
+- [x] Accepting invite creates membership
+- [x] Members page lists members and roles
+- [x] Viewer cannot invite
+- [x] Invalid token handled cleanly
 
 ## Verification
 
@@ -101,17 +101,17 @@ STEP-20
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-21
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-21
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-M3 complete. Invite token TTL: ____.
+M3 complete. Invite token TTL: **7 days** (`member.InvitationTTL()`). Default invited role: Member. Accept path: `GET /invites/{token}` auto-accepts when signed in with matching email; login/register support `?next=` for return. Owners manage roles (Member/Viewer) and remove non-owners on `/w/{slug}/members`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-21.
