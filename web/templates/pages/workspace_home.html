@@ -4,11 +4,14 @@
   <div class="page__main">
     <div class="stack">
       <h1>{{.Workspace.Name}}</h1>
-      <p>Workspace <code>/w/{{.Workspace.Slug}}</code>{{with .User}} · signed in as {{.DisplayName}}{{end}}.</p>
+      <p>Workspace <code>/w/{{.Workspace.Slug}}</code>{{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.</p>
       <p>Projects and members will appear here in later steps.</p>
       <div class="cluster">
         <a class="button" href="/app">Back to app</a>
         <a class="button" href="/app/workspaces/new">New workspace</a>
+        {{if eq .Role "owner"}}
+        <a class="button" href="/w/{{.Workspace.Slug}}/settings">Settings</a>
+        {{end}}
       </div>
     </div>
   </div>

@@ -1,0 +1,14 @@
+{{define "title"}}Settings — {{.Workspace.Name}} — Forgeboard{{end}}
+{{define "content"}}
+<main class="page">
+  <div class="page__main">
+    <div class="stack">
+      <h1>Workspace settings</h1>
+      <p>Settings for <strong>{{.Workspace.Name}}</strong> (<code>/w/{{.Workspace.Slug}}</code>). Full settings arrive in a later step.</p>
+      <div class="cluster">
+        <a class="button" href="/w/{{.Workspace.Slug}}">Back to workspace</a>
+      </div>
+    </div>
+  </div>
+</main>
+{{end}}

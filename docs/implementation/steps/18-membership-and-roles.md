@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-18` |
 | Milestone | M3 — Workspaces |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-17 |
 | Unlocks | STEP-19 |
 | Estimated scope | L |
@@ -44,10 +44,10 @@ Implement RBAC from specs/roles.md. All /w/{slug}/... routes must resolve member
 
 ## Implementation checklist
 
-- [ ] members migration
-- [ ] authz helpers
-- [ ] tests: viewer cannot mutate; outsider forbidden
-- [ ] wire middleware on workspace routes
+- [x] members migration
+- [x] authz helpers
+- [x] tests: viewer cannot mutate; outsider forbidden
+- [x] wire middleware on workspace routes
 
 ## Files to create / modify
 
@@ -63,11 +63,11 @@ Fail closed. Prefer 404 over 403 for cross-workspace enumeration if you choose �
 
 ## Acceptance criteria
 
-- [ ] Three roles exist: Owner, Member, Viewer
-- [ ] Non-member cannot access workspace routes
-- [ ] Viewer cannot perform mutations
-- [ ] Owner can access settings routes (even if UI stub)
-- [ ] Authorization tests pass
+- [x] Three roles exist: Owner, Member, Viewer
+- [x] Non-member cannot access workspace routes
+- [x] Viewer cannot perform mutations
+- [x] Owner can access settings routes (even if UI stub)
+- [x] Authorization tests pass
 
 ## Verification
 
@@ -97,17 +97,17 @@ STEP-18
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-19
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-19
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Role constants: ____. 403 vs 404 policy: ____.
+Role constants: `member.RoleOwner` / `RoleMember` / `RoleViewer` (DB: `owner`|`member`|`viewer`). 403 vs 404 policy: non-member or unknown workspace → **404** (no enumeration); member lacking capability (Viewer mutate, non-Owner settings) → **403**. Creator gets Owner membership in the same create transaction. Helpers: `member.RequireMembership`, `RequireOwner`, `RequireCanMutate`.
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-19.

@@ -8,6 +8,7 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/workspace"
 	"github.com/kevin-voss/htmx-go-postgresql/web"
@@ -49,9 +50,13 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		cfg.CookieSecure,
 	)
 
+	memberRepo := member.NewRepository(db)
+	memberService := member.NewService(memberRepo)
+
 	workspaceRepo := workspace.NewRepository(db)
 	workspaceHandler := workspace.NewHandler(
 		workspace.NewService(workspaceRepo),
+		memberService,
 		renderer,
 		logger,
 	)

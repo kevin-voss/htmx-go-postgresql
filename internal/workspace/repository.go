@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 )
 
 // ErrNotFound is returned when no workspace matches the lookup.
@@ -26,15 +28,21 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
-// Create inserts a workspace and returns the stored row.
+// Create inserts a workspace and Owner membership for createdBy in one transaction.
 func (r *Repository) Create(ctx context.Context, name, slug, createdBy string) (Workspace, error) {
-	const q = `
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return Workspace{}, fmt.Errorf("workspace: create begin: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	const insertWorkspace = `
 		INSERT INTO workspaces (name, slug, created_by)
 		VALUES ($1, $2, $3)
 		RETURNING id, name, slug, created_by, created_at, updated_at`
 
 	var w Workspace
-	err := r.db.QueryRow(ctx, q, name, slug, createdBy).Scan(
+	err = tx.QueryRow(ctx, insertWorkspace, name, slug, createdBy).Scan(
 		&w.ID,
 		&w.Name,
 		&w.Slug,
@@ -48,6 +56,18 @@ func (r *Repository) Create(ctx context.Context, name, slug, createdBy string) (
 			return Workspace{}, ErrDuplicateSlug
 		}
 		return Workspace{}, fmt.Errorf("workspace: create: %w", err)
+	}
+
+	const insertOwner = `
+		INSERT INTO workspace_members (workspace_id, user_id, role)
+		VALUES ($1, $2, $3)`
+
+	if _, err := tx.Exec(ctx, insertOwner, w.ID, createdBy, string(member.RoleOwner)); err != nil {
+		return Workspace{}, fmt.Errorf("workspace: create owner membership: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Workspace{}, fmt.Errorf("workspace: create commit: %w", err)
 	}
 	return w, nil
 }
