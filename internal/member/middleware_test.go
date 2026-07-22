@@ -43,6 +43,10 @@ func (s *resolveStore) HasAny(context.Context, string) (bool, error) {
 	return len(s.access) > 0, nil
 }
 
+func (s *resolveStore) ListByUser(context.Context, string) ([]member.UserWorkspace, error) {
+	return nil, nil
+}
+
 func (s *resolveStore) ListByWorkspace(context.Context, string) ([]member.MemberView, error) {
 	return nil, nil
 }

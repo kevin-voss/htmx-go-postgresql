@@ -1,153 +1,162 @@
 {{define "title"}}Issues — {{.Project.Name}} — Forgeboard{{end}}
 {{define "content"}}
 <main class="page">
+  {{template "app_chrome" .Chrome}}
   <div class="page__main">
-    <div class="stack">
-      <h1>Issues</h1>
-      <p>
-        Project <a href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">{{.Project.Name}}</a>
-        in {{.WorkspaceName}}{{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.
-      </p>
+    <div class="stack stack--lg">
+      <header class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-header__title">Issues</h1>
+          <p class="page-header__lede">
+            Project <a href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">{{.Project.Name}}</a>
+            in {{.WorkspaceName}}
+          </p>
+        </div>
+      </header>
 
-      <form
-        class="stack"
-        method="get"
-        action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
-        style="max-inline-size: 40rem;"
-        hx-get="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
-        hx-target="#issue-list-results"
-        hx-swap="innerHTML"
-        hx-push-url="true"
-        hx-indicator="#issue-filter-indicator"
-        hx-disable="find button[type='submit']"
-      >
-        <h2>Filter</h2>
-        <div class="form-field">
-          <label class="form-field__label" for="q">Search</label>
-          <input
-            class="form-field__input"
-            type="search"
-            id="q"
-            name="q"
-            value="{{.Filter.Query}}"
-            placeholder="Title or description"
+      <section class="panel measure--lg">
+        <h2 class="panel__title">Filter</h2>
+        <div class="panel__body">
+          <form
+            class="stack"
+            method="get"
+            action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+            hx-get="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+            hx-target="#issue-list-results"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-indicator="#issue-filter-indicator"
+            hx-disable="find button[type='submit']"
           >
-        </div>
-        <div class="cluster">
-          <div class="form-field">
-            <label class="form-field__label" for="status">Status</label>
-            <select class="form-field__input" id="status" name="status">
-              <option value="">Any</option>
-              {{range .Statuses}}
-              <option value="{{.Value}}"{{if eq $.Filter.Status .Value}} selected{{end}}>{{.Label}}</option>
+            <div class="form-field">
+              <label class="form-field__label" for="q">Search</label>
+              <input
+                class="form-field__input"
+                type="search"
+                id="q"
+                name="q"
+                value="{{.Filter.Query}}"
+                placeholder="Title or description"
+              >
+            </div>
+            <div class="cluster">
+              <div class="form-field">
+                <label class="form-field__label" for="status">Status</label>
+                <select class="form-field__input" id="status" name="status">
+                  <option value="">Any</option>
+                  {{range .Statuses}}
+                  <option value="{{.Value}}"{{if eq $.Filter.Status .Value}} selected{{end}}>{{.Label}}</option>
+                  {{end}}
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-field__label" for="priority">Priority</label>
+                <select class="form-field__input" id="priority" name="priority">
+                  <option value="">Any</option>
+                  {{range .Priorities}}
+                  <option value="{{.Value}}"{{if eq $.Filter.Priority .Value}} selected{{end}}>{{.Label}}</option>
+                  {{end}}
+                </select>
+              </div>
+            </div>
+            <div class="cluster">
+              <div class="form-field">
+                <label class="form-field__label" for="assignee">Assignee</label>
+                <select class="form-field__input" id="assignee" name="assignee">
+                  <option value="">Any</option>
+                  <option value="none"{{if eq .Filter.AssigneeID "none"}} selected{{end}}>Unassigned</option>
+                  {{range .Members}}
+                  <option value="{{.UserID}}"{{if eq $.Filter.AssigneeID .UserID}} selected{{end}}>{{.DisplayName}}</option>
+                  {{end}}
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-field__label" for="label">Label</label>
+                <select class="form-field__input" id="label" name="label">
+                  <option value="">Any</option>
+                  {{range .Labels}}
+                  <option value="{{.ID}}"{{if eq $.Filter.LabelID .ID}} selected{{end}}>{{.Name}}</option>
+                  {{end}}
+                </select>
+              </div>
+            </div>
+            <div class="cluster">
+              <button class="button button--primary" type="submit">
+                Apply filters
+                <span id="issue-filter-indicator" class="htmx-indicator" aria-hidden="true">Loading…</span>
+              </button>
+              {{if .FilterActive}}
+              <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">Clear</a>
               {{end}}
-            </select>
-          </div>
-          <div class="form-field">
-            <label class="form-field__label" for="priority">Priority</label>
-            <select class="form-field__input" id="priority" name="priority">
-              <option value="">Any</option>
-              {{range .Priorities}}
-              <option value="{{.Value}}"{{if eq $.Filter.Priority .Value}} selected{{end}}>{{.Label}}</option>
-              {{end}}
-            </select>
-          </div>
+            </div>
+          </form>
         </div>
-        <div class="cluster">
-          <div class="form-field">
-            <label class="form-field__label" for="assignee">Assignee</label>
-            <select class="form-field__input" id="assignee" name="assignee">
-              <option value="">Any</option>
-              <option value="none"{{if eq .Filter.AssigneeID "none"}} selected{{end}}>Unassigned</option>
-              {{range .Members}}
-              <option value="{{.UserID}}"{{if eq $.Filter.AssigneeID .UserID}} selected{{end}}>{{.DisplayName}}</option>
-              {{end}}
-            </select>
-          </div>
-          <div class="form-field">
-            <label class="form-field__label" for="label">Label</label>
-            <select class="form-field__input" id="label" name="label">
-              <option value="">Any</option>
-              {{range .Labels}}
-              <option value="{{.ID}}"{{if eq $.Filter.LabelID .ID}} selected{{end}}>{{.Name}}</option>
-              {{end}}
-            </select>
-          </div>
-        </div>
-        <div class="cluster">
-          <button class="button button--primary" type="submit">
-            Apply filters
-            <span id="issue-filter-indicator" class="htmx-indicator" aria-hidden="true">Loading…</span>
-          </button>
-          {{if .FilterActive}}
-          <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">Clear</a>
-          {{end}}
-        </div>
-      </form>
+      </section>
 
-      <div id="issue-list-results">
-        {{template "issue_list_results" .}}
-      </div>
+      <section class="panel">
+        <h2 class="panel__title">Results</h2>
+        <div class="panel__body">
+          <div id="issue-list-results">
+            {{template "issue_list_results" .}}
+          </div>
+        </div>
+      </section>
 
       {{if .CanCreate}}
-      <div class="stack" style="max-inline-size: 32rem;">
-        <h2>New issue</h2>
-        <div id="issue-form-errors" class="form-errors" aria-live="polite">
-          {{template "issue_form_errors" .Errors}}
+      <section class="panel measure--md">
+        <h2 class="panel__title">New issue</h2>
+        <div class="panel__body">
+          <div id="issue-form-errors" class="form-errors" aria-live="polite">
+            {{template "issue_form_errors" .Errors}}
+          </div>
+          <form
+            class="stack"
+            method="post"
+            action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+            novalidate
+            hx-post="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
+            hx-target="#issue-list"
+            hx-swap="beforeend"
+            hx-status:422="target:#issue-form-errors swap:innerHTML"
+            hx-indicator="#issue-create-indicator"
+            hx-disable="find button[type='submit']"
+            hx-on:htmx:before:request="document.getElementById('issue-form-errors').replaceChildren()"
+            hx-on:htmx:after:request="if (ctx.response.status < 400) this.reset()"
+          >
+            {{template "csrf_field" .CSRFToken}}
+            <div class="form-field">
+              <label class="form-field__label" for="title">Title</label>
+              <input
+                class="form-field__input"
+                type="text"
+                id="title"
+                name="title"
+                required
+                maxlength="200"
+                value="{{.Form.Title}}"
+              >
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="description">Description</label>
+              <textarea
+                class="form-field__input"
+                id="description"
+                name="description"
+                rows="4"
+              >{{.Form.Description}}</textarea>
+            </div>
+
+            <div class="cluster">
+              <button class="button button--primary" type="submit">
+                Create issue
+                <span id="issue-create-indicator" class="htmx-indicator" aria-hidden="true">Creating…</span>
+              </button>
+            </div>
+          </form>
         </div>
-        <form
-          class="stack"
-          method="post"
-          action="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
-          novalidate
-          hx-post="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues"
-          hx-target="#issue-list"
-          hx-swap="beforeend"
-          hx-status:422="target:#issue-form-errors swap:innerHTML"
-          hx-indicator="#issue-create-indicator"
-          hx-disable="find button[type='submit']"
-          hx-on:htmx:before:request="document.getElementById('issue-form-errors').replaceChildren()"
-          hx-on:htmx:after:request="if (ctx.response.status < 400) this.reset()"
-        >
-          {{template "csrf_field" .CSRFToken}}
-          <div class="form-field">
-            <label class="form-field__label" for="title">Title</label>
-            <input
-              class="form-field__input"
-              type="text"
-              id="title"
-              name="title"
-              required
-              maxlength="200"
-              value="{{.Form.Title}}"
-            >
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label" for="description">Description</label>
-            <textarea
-              class="form-field__input"
-              id="description"
-              name="description"
-              rows="4"
-            >{{.Form.Description}}</textarea>
-          </div>
-
-          <div class="cluster">
-            <button class="button button--primary" type="submit">
-              Create issue
-              <span id="issue-create-indicator" class="htmx-indicator" aria-hidden="true">Creating…</span>
-            </button>
-          </div>
-        </form>
-      </div>
+      </section>
       {{end}}
-
-      <div class="cluster">
-        <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">Project</a>
-        <a class="button" href="/w/{{.WorkspaceSlug}}/projects">All projects</a>
-        <a class="button" href="/app">Back to app</a>
-      </div>
     </div>
   </div>
 </main>

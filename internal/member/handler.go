@@ -12,6 +12,7 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/ui"
 )
 
 // Handler serves membership and invitation HTTP endpoints.
@@ -79,6 +80,7 @@ type membersPageData struct {
 	Form          inviteFormData
 	Errors        InviteErrors
 	Flash         string
+	Chrome        ui.Chrome
 }
 
 type inviteFormData struct {
@@ -120,8 +122,9 @@ func (h *Handler) showMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	csrf := middleware.CSRFToken(r.Context())
 	h.renderMembers(w, http.StatusOK, membersPageData{
-		CSRFToken:     middleware.CSRFToken(r.Context()),
+		CSRFToken:     csrf,
 		WorkspaceID:   workspaceID,
 		WorkspaceName: workspaceName,
 		WorkspaceSlug: workspaceSlug,
@@ -130,6 +133,7 @@ func (h *Handler) showMembers(w http.ResponseWriter, r *http.Request) {
 		Members:       members,
 		IsOwner:       Role(role).CanInvite(),
 		Flash:         strings.TrimSpace(r.URL.Query().Get("flash")),
+		Chrome:        membersChrome(user.DisplayName, csrf, workspaceName, workspaceSlug, role),
 	})
 }
 
@@ -173,8 +177,9 @@ func (h *Handler) createInvite(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		csrf := middleware.CSRFToken(r.Context())
 		h.renderMembers(w, http.StatusUnprocessableEntity, membersPageData{
-			CSRFToken:     middleware.CSRFToken(r.Context()),
+			CSRFToken:     csrf,
 			WorkspaceID:   workspaceID,
 			WorkspaceName: workspaceName,
 			WorkspaceSlug: workspaceSlug,
@@ -187,6 +192,7 @@ func (h *Handler) createInvite(w http.ResponseWriter, r *http.Request) {
 				Role:  string(inviteRole),
 			},
 			Errors: fieldErrs,
+			Chrome: membersChrome(user.DisplayName, csrf, workspaceName, workspaceSlug, role),
 		})
 		return
 	}
@@ -322,6 +328,14 @@ func (h *Handler) showInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/w/"+result.Invitation.WorkspaceSlug, http.StatusSeeOther)
+}
+
+func membersChrome(displayName, csrf, name, slug, role string) ui.Chrome {
+	return ui.Workspace(displayName, csrf, name, slug, role, ui.NavMembers,
+		ui.Crumb{Label: "App", Href: "/app"},
+		ui.Crumb{Label: name, Href: "/w/" + slug},
+		ui.Crumb{Label: "Members"},
+	)
 }
 
 func (h *Handler) renderMembers(w http.ResponseWriter, status int, data membersPageData) {

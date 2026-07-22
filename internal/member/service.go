@@ -27,6 +27,7 @@ type Store interface {
 	GetByWorkspaceAndUser(ctx context.Context, workspaceID, userID string) (Membership, error)
 	GetAccessBySlug(ctx context.Context, slug, userID string) (Access, error)
 	HasAny(ctx context.Context, userID string) (bool, error)
+	ListByUser(ctx context.Context, userID string) ([]UserWorkspace, error)
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]MemberView, error)
 	UpdateRole(ctx context.Context, workspaceID, userID string, role Role) error
 	Delete(ctx context.Context, workspaceID, userID string) error
@@ -95,6 +96,15 @@ func (s *Service) HasAnyMembership(ctx context.Context, userID string) (bool, er
 		return false, err
 	}
 	return ok, nil
+}
+
+// ListWorkspacesForUser returns workspaces the user belongs to (name, slug, role).
+func (s *Service) ListWorkspacesForUser(ctx context.Context, userID string) ([]UserWorkspace, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, nil
+	}
+	return s.store.ListByUser(ctx, userID)
 }
 
 // ListMembers returns workspace members for the members page.

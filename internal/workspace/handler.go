@@ -9,23 +9,33 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/ui"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/project"
 )
 
 // Handler serves workspace HTTP endpoints.
 type Handler struct {
-	service *Service
-	members *member.Service
-	render  *render.Renderer
-	logger  *slog.Logger
+	service  *Service
+	members  *member.Service
+	projects *project.Service
+	render   *render.Renderer
+	logger   *slog.Logger
 }
 
 // NewHandler constructs a workspace HTTP handler.
-func NewHandler(service *Service, members *member.Service, renderer *render.Renderer, logger *slog.Logger) *Handler {
+func NewHandler(
+	service *Service,
+	members *member.Service,
+	projects *project.Service,
+	renderer *render.Renderer,
+	logger *slog.Logger,
+) *Handler {
 	return &Handler{
-		service: service,
-		members: members,
-		render:  renderer,
-		logger:  logger,
+		service:  service,
+		members:  members,
+		projects: projects,
+		render:   renderer,
+		logger:   logger,
 	}
 }
 
@@ -54,6 +64,7 @@ type newPageData struct {
 	CSRFToken string
 	Form      createFormData
 	Errors    CreateErrors
+	Chrome    ui.Chrome
 }
 
 type createFormData struct {
@@ -76,14 +87,17 @@ type onboardingFormData struct {
 type homePageData struct {
 	CSRFToken string
 	Workspace Workspace
+	Projects  []project.Project
 	User      auth.User
 	Role      string
+	Chrome    ui.Chrome
 }
 
 type settingsPageData struct {
 	CSRFToken string
 	Workspace Workspace
 	User      auth.User
+	Chrome    ui.Chrome
 }
 
 func (h *Handler) showOnboarding(w http.ResponseWriter, r *http.Request) {
@@ -172,8 +186,14 @@ func (h *Handler) completeOnboarding(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) showNew(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
+	csrf := middleware.CSRFToken(r.Context())
 	h.renderNew(w, http.StatusOK, newPageData{
-		CSRFToken: middleware.CSRFToken(r.Context()),
+		CSRFToken: csrf,
+		Chrome: ui.App(user.DisplayName, csrf,
+			ui.Crumb{Label: "App", Href: "/app"},
+			ui.Crumb{Label: "New workspace"},
+		),
 	})
 }
 
@@ -200,13 +220,18 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if fieldErrs.Any() {
+		csrf := middleware.CSRFToken(r.Context())
 		h.renderNew(w, http.StatusUnprocessableEntity, newPageData{
-			CSRFToken: middleware.CSRFToken(r.Context()),
+			CSRFToken: csrf,
 			Form: createFormData{
 				Name: strings.TrimSpace(r.FormValue("name")),
 				Slug: strings.ToLower(strings.TrimSpace(r.FormValue("slug"))),
 			},
 			Errors: fieldErrs,
+			Chrome: ui.App(user.DisplayName, csrf,
+				ui.Crumb{Label: "App", Href: "/app"},
+				ui.Crumb{Label: "New workspace"},
+			),
 		})
 		return
 	}
@@ -228,12 +253,29 @@ func (h *Handler) show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	role, _ := middleware.WorkspaceRoleFromContext(r.Context())
+	csrf := middleware.CSRFToken(r.Context())
+
+	var projects []project.Project
+	if h.projects != nil {
+		listed, err := h.projects.ListByWorkspace(r.Context(), ws.ID)
+		if err != nil {
+			h.logger.Error("list projects failed", "err", err, "workspace_id", ws.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		projects = listed
+	}
 
 	h.renderHome(w, http.StatusOK, homePageData{
-		CSRFToken: middleware.CSRFToken(r.Context()),
+		CSRFToken: csrf,
 		Workspace: ws,
+		Projects:  projects,
 		User:      user,
 		Role:      role,
+		Chrome: ui.Workspace(user.DisplayName, csrf, ws.Name, ws.Slug, role, "",
+			ui.Crumb{Label: "App", Href: "/app"},
+			ui.Crumb{Label: ws.Name},
+		),
 	})
 }
 
@@ -249,11 +291,18 @@ func (h *Handler) showSettings(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	role, _ := middleware.WorkspaceRoleFromContext(r.Context())
+	csrf := middleware.CSRFToken(r.Context())
 
 	h.renderSettings(w, http.StatusOK, settingsPageData{
-		CSRFToken: middleware.CSRFToken(r.Context()),
+		CSRFToken: csrf,
 		Workspace: ws,
 		User:      user,
+		Chrome: ui.Workspace(user.DisplayName, csrf, ws.Name, ws.Slug, role, ui.NavSettings,
+			ui.Crumb{Label: "App", Href: "/app"},
+			ui.Crumb{Label: ws.Name, Href: "/w/" + ws.Slug},
+			ui.Crumb{Label: "Settings"},
+		),
 	})
 }
 

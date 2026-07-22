@@ -1,17 +1,48 @@
 {{define "title"}}App — Forgeboard{{end}}
 {{define "content"}}
 <main class="page">
+  {{template "app_chrome" .Chrome}}
   <div class="page__main">
-    <div class="stack">
-      <h1>Dashboard</h1>
-      <p>Welcome{{with .User}}, {{.DisplayName}}{{end}}. You are signed in.</p>
-      <div class="cluster">
-        <a class="button button--primary" href="/app/workspaces/new">Create workspace</a>
-      </div>
-      <form method="post" action="/logout">
-        {{template "csrf_field" .CSRFToken}}
-        <button class="button" type="submit">Log out</button>
-      </form>
+    <div class="stack stack--lg">
+      <header class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-header__title">Dashboard</h1>
+          <p class="page-header__lede">Welcome{{with .User}}, {{.DisplayName}}{{end}}. You are signed in.</p>
+        </div>
+        <div class="page-header__actions cluster">
+          <a class="button button--primary" href="/app/workspaces/new">Create workspace</a>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2 class="panel__title">Your workspaces</h2>
+        <div class="panel__body">
+          {{if .Workspaces}}
+          <div class="grid grid--cards">
+            {{range .Workspaces}}
+            <article class="card">
+              <div class="card__header">
+                <p class="card__title">
+                  <a href="/w/{{.Slug}}">{{.Name}}</a>
+                </p>
+                <p class="card__meta">{{.Role}}</p>
+              </div>
+              <p class="card__meta"><code>/w/{{.Slug}}</code></p>
+              <div class="cluster">
+                <a class="button button--primary" href="/w/{{.Slug}}">Open</a>
+                <a class="button" href="/w/{{.Slug}}/projects">Projects</a>
+              </div>
+            </article>
+            {{end}}
+          </div>
+          {{else}}
+          <p class="u-m-0">Create a workspace to manage projects, issues, labels, and members.</p>
+          <div class="cluster">
+            <a class="button button--primary" href="/app/workspaces/new">Create workspace</a>
+          </div>
+          {{end}}
+        </div>
+      </section>
     </div>
   </div>
 </main>

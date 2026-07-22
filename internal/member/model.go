@@ -27,6 +27,14 @@ type Access struct {
 	Membership    Membership
 }
 
+// UserWorkspace is a workspace the user belongs to (dashboard listing).
+type UserWorkspace struct {
+	ID   string
+	Name string
+	Slug string
+	Role Role
+}
+
 // Invitation is a pending or accepted workspace invitation.
 type Invitation struct {
 	ID            string

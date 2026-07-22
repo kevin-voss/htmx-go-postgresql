@@ -1,0 +1,29 @@
+{{define "app_chrome"}}
+<header class="page__header app-header">
+  <div class="app-header__inner">
+    <div class="app-header__brand cluster">
+      <a class="app-header__logo" href="/app">Forgeboard</a>
+      {{if .WorkspaceSlug}}
+      <span class="app-header__sep" aria-hidden="true">/</span>
+      <a class="app-header__workspace" href="/w/{{.WorkspaceSlug}}">{{.WorkspaceName}}</a>
+      {{end}}
+    </div>
+    <div class="app-header__actions cluster">
+      {{if .DisplayName}}
+      <span class="app-header__user u-text-muted">{{.DisplayName}}{{with .Role}} · {{.}}{{end}}</span>
+      {{end}}
+      <a class="button" href="/account/sessions">Sessions</a>
+      <form method="post" action="/logout">
+        {{template "csrf_field" .CSRFToken}}
+        <button class="button" type="submit">Log out</button>
+      </form>
+    </div>
+  </div>
+</header>
+{{if .ShowWorkspaceNav}}
+{{template "workspace_nav" .}}
+{{end}}
+{{if .Breadcrumbs}}
+{{template "breadcrumb" .Breadcrumbs}}
+{{end}}
+{{end}}

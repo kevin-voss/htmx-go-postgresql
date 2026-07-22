@@ -1,0 +1,28 @@
+{{define "workspace_nav"}}
+<nav class="workspace-nav" aria-label="Workspace">
+  <div class="workspace-nav__inner">
+    <a
+      class="workspace-nav__link"
+      href="/w/{{.WorkspaceSlug}}/projects"
+      {{if eq .NavActive "projects"}}aria-current="page"{{end}}
+    >Projects</a>
+    <a
+      class="workspace-nav__link"
+      href="/w/{{.WorkspaceSlug}}/labels"
+      {{if eq .NavActive "labels"}}aria-current="page"{{end}}
+    >Labels</a>
+    <a
+      class="workspace-nav__link"
+      href="/w/{{.WorkspaceSlug}}/members"
+      {{if eq .NavActive "members"}}aria-current="page"{{end}}
+    >Members</a>
+    {{if eq .Role "owner"}}
+    <a
+      class="workspace-nav__link"
+      href="/w/{{.WorkspaceSlug}}/settings"
+      {{if eq .NavActive "settings"}}aria-current="page"{{end}}
+    >Settings</a>
+    {{end}}
+  </div>
+</nav>
+{{end}}

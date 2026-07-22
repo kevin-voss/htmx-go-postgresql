@@ -51,8 +51,30 @@ func TestLoginHandlerIssuesSession(t *testing.T) {
 	appReq.AddCookie(sessionCookie)
 	appRR := httptest.NewRecorder()
 	application.Routes().ServeHTTP(appRR, appReq)
-	if appRR.Code != http.StatusOK && appRR.Code != http.StatusSeeOther {
-		t.Fatalf("authenticated /app status = %d, want 200 or 303; body=%q", appRR.Code, appRR.Body.String())
+	if appRR.Code != http.StatusOK {
+		t.Fatalf("authenticated /app status = %d, want %d; body=%q", appRR.Code, http.StatusOK, appRR.Body.String())
+	}
+	body := appRR.Body.String()
+	if !strings.Contains(body, "IT Workspace") {
+		t.Fatalf("/app missing workspace name; body=%q", body)
+	}
+	if !strings.Contains(body, `/w/`+fx.WorkspaceSlug) {
+		t.Fatalf("/app missing workspace link; body=%q", body)
+	}
+
+	homeReq := httptest.NewRequest(http.MethodGet, "/w/"+fx.WorkspaceSlug, nil)
+	homeReq.AddCookie(sessionCookie)
+	homeRR := httptest.NewRecorder()
+	application.Routes().ServeHTTP(homeRR, homeReq)
+	if homeRR.Code != http.StatusOK {
+		t.Fatalf("workspace home status = %d, want %d; body=%q", homeRR.Code, http.StatusOK, homeRR.Body.String())
+	}
+	homeBody := homeRR.Body.String()
+	if !strings.Contains(homeBody, "IT Project") {
+		t.Fatalf("workspace home missing project name; body=%q", homeBody)
+	}
+	if !strings.Contains(homeBody, `/w/`+fx.WorkspaceSlug+`/projects/`+fx.ProjectSlug+`/issues`) {
+		t.Fatalf("workspace home missing issues link; body=%q", homeBody)
 	}
 }
 

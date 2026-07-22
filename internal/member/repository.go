@@ -96,6 +96,37 @@ func (r *Repository) HasAny(ctx context.Context, userID string) (bool, error) {
 	return ok, nil
 }
 
+// ListByUser returns workspaces the user is a member of, ordered by name.
+func (r *Repository) ListByUser(ctx context.Context, userID string) ([]UserWorkspace, error) {
+	const q = `
+		SELECT w.id, w.name, w.slug, m.role
+		FROM workspace_members m
+		INNER JOIN workspaces w ON w.id = m.workspace_id
+		WHERE m.user_id = $1
+		ORDER BY w.name ASC`
+
+	rows, err := r.db.Query(ctx, q, userID)
+	if err != nil {
+		return nil, fmt.Errorf("member: list by user: %w", err)
+	}
+	defer rows.Close()
+
+	var out []UserWorkspace
+	for rows.Next() {
+		var uw UserWorkspace
+		var roleStr string
+		if err := rows.Scan(&uw.ID, &uw.Name, &uw.Slug, &roleStr); err != nil {
+			return nil, fmt.Errorf("member: list by user scan: %w", err)
+		}
+		uw.Role = Role(roleStr)
+		out = append(out, uw)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("member: list by user rows: %w", err)
+	}
+	return out, nil
+}
+
 // GetAccessBySlug returns workspace + membership for a user by workspace slug.
 // Missing workspace or membership both yield ErrNotFound (fail closed).
 func (r *Repository) GetAccessBySlug(ctx context.Context, slug, userID string) (Access, error) {

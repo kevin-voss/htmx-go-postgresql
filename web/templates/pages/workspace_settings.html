@@ -1,13 +1,21 @@
 {{define "title"}}Settings — {{.Workspace.Name}} — Forgeboard{{end}}
 {{define "content"}}
 <main class="page">
+  {{template "app_chrome" .Chrome}}
   <div class="page__main">
-    <div class="stack">
-      <h1>Workspace settings</h1>
-      <p>Settings for <strong>{{.Workspace.Name}}</strong> (<code>/w/{{.Workspace.Slug}}</code>). Full settings arrive in a later step.</p>
-      <div class="cluster">
-        <a class="button" href="/w/{{.Workspace.Slug}}">Back to workspace</a>
-      </div>
+    <div class="stack stack--lg">
+      <header class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-header__title">Workspace settings</h1>
+          <p class="page-header__lede">Settings for <strong>{{.Workspace.Name}}</strong> (<code>/w/{{.Workspace.Slug}}</code>).</p>
+        </div>
+      </header>
+      <section class="panel">
+        <h2 class="panel__title">General</h2>
+        <div class="panel__body">
+          <p class="u-m-0 u-text-muted">Full settings arrive in a later step. Use members and labels from the workspace navigation for now.</p>
+        </div>
+      </section>
     </div>
   </div>
 </main>

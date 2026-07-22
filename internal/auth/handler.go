@@ -12,6 +12,7 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/mail"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/ui"
 )
 
 const (
@@ -111,6 +112,7 @@ type resetPasswordPageData struct {
 type sessionsPageData struct {
 	CSRFToken string
 	Sessions  []sessionRow
+	Chrome    ui.Chrome
 }
 
 type sessionRow struct {
@@ -307,9 +309,14 @@ func (h *Handler) showSessions(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	csrf := middleware.CSRFToken(r.Context())
 	h.renderSessions(w, http.StatusOK, sessionsPageData{
-		CSRFToken: middleware.CSRFToken(r.Context()),
+		CSRFToken: csrf,
 		Sessions:  rows,
+		Chrome: ui.App(user.DisplayName, csrf,
+			ui.Crumb{Label: "App", Href: "/app"},
+			ui.Crumb{Label: "Sessions"},
+		),
 	})
 }
 

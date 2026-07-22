@@ -1,20 +1,25 @@
 {{define "title"}}Sessions — Forgeboard{{end}}
 {{define "content"}}
 <main class="page">
+  {{template "app_chrome" .Chrome}}
   <div class="page__main">
-    <div class="stack">
-      <h1>Active sessions</h1>
-      <p>Devices and browsers currently signed in to your account. Revoke any you do not recognize.</p>
+    <div class="stack stack--lg">
+      <header class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-header__title">Active sessions</h1>
+          <p class="page-header__lede">Devices and browsers currently signed in to your account. Revoke any you do not recognize.</p>
+        </div>
+      </header>
 
       {{if .Sessions}}
-      <div class="stack">
+      <div class="grid grid--cards">
         {{range .Sessions}}
-        <div class="issue-card">
-          <div class="issue-card__header">
-            <p class="issue-card__title">
+        <article class="card">
+          <div class="card__header">
+            <p class="card__title">
               {{.UserAgent}}
               {{if .Current}}
-              <span class="issue-card__meta">(this device)</span>
+              <span class="card__meta">(this device)</span>
               {{end}}
             </p>
             {{if not .Current}}
@@ -24,23 +29,23 @@
             </form>
             {{end}}
           </div>
-          <p class="issue-card__meta">IP: {{.IPAddress}}</p>
-          <p class="issue-card__meta">Last seen: {{.LastSeenAt}}</p>
-          <p class="issue-card__meta">Signed in: {{.CreatedAt}}</p>
+          <p class="card__meta">IP: {{.IPAddress}}</p>
+          <p class="card__meta">Last seen: {{.LastSeenAt}}</p>
+          <p class="card__meta">Signed in: {{.CreatedAt}}</p>
           {{if .Current}}
           <form method="post" action="/account/sessions/{{.ID}}/revoke">
             {{template "csrf_field" $.CSRFToken}}
             <button class="button" type="submit">Sign out this device</button>
           </form>
           {{end}}
-        </div>
+        </article>
         {{end}}
       </div>
       {{else}}
-      <p>No active sessions.</p>
+      <section class="panel">
+        <p class="u-m-0">No active sessions.</p>
+      </section>
       {{end}}
-
-      <p><a href="/app">Back to dashboard</a></p>
     </div>
   </div>
 </main>

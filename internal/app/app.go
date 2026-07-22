@@ -63,14 +63,6 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 	memberService := member.NewService(memberRepo).WithUserLookup(member.AuthUserLookup{Users: repo})
 	memberHandler := member.NewHandler(memberService, mailer, renderer, logger)
 
-	workspaceRepo := workspace.NewRepository(db)
-	workspaceHandler := workspace.NewHandler(
-		workspace.NewService(workspaceRepo),
-		memberService,
-		renderer,
-		logger,
-	)
-
 	activityRepo := activity.NewRepository(db)
 	activityService := activity.NewService(activityRepo)
 	txBeginner := activity.PoolBeginner{Pool: db}
@@ -83,6 +75,15 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		renderer,
 		logger,
 	).WithActivity(activityService)
+
+	workspaceRepo := workspace.NewRepository(db)
+	workspaceHandler := workspace.NewHandler(
+		workspace.NewService(workspaceRepo),
+		memberService,
+		projectService,
+		renderer,
+		logger,
+	)
 
 	issueRepo := issue.NewRepository(db)
 	issueService := issue.NewService(issueRepo).

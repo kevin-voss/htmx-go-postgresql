@@ -57,6 +57,24 @@ func (s *stubStore) HasAny(_ context.Context, userID string) (bool, error) {
 	return false, nil
 }
 
+func (s *stubStore) ListByUser(_ context.Context, userID string) ([]UserWorkspace, error) {
+	if s.access == nil {
+		return nil, nil
+	}
+	var out []UserWorkspace
+	for key, a := range s.access {
+		if len(key) > len(userID)+1 && key[len(key)-len(userID):] == userID {
+			out = append(out, UserWorkspace{
+				ID:   a.WorkspaceID,
+				Name: a.WorkspaceName,
+				Slug: a.WorkspaceSlug,
+				Role: a.Membership.Role,
+			})
+		}
+	}
+	return out, nil
+}
+
 func (s *stubStore) ListByWorkspace(context.Context, string) ([]MemberView, error) {
 	return s.list, nil
 }
@@ -174,6 +192,50 @@ func TestAddMemberRejectsInvalidRole(t *testing.T) {
 	_, err := svc.AddMember(context.Background(), "w1", "u1", Role("admin"))
 	if err == nil {
 		t.Fatal("want error for invalid role")
+	}
+}
+
+func TestListWorkspacesForUser(t *testing.T) {
+	t.Parallel()
+
+	store := &stubStore{
+		access: map[string]Access{
+			"acme|u1": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership:    Membership{Role: RoleOwner},
+			},
+			"beta|u1": {
+				WorkspaceID:   "w2",
+				WorkspaceName: "Beta",
+				WorkspaceSlug: "beta",
+				Membership:    Membership{Role: RoleMember},
+			},
+			"acme|u2": {
+				WorkspaceID:   "w1",
+				WorkspaceName: "Acme",
+				WorkspaceSlug: "acme",
+				Membership:    Membership{Role: RoleViewer},
+			},
+		},
+	}
+	svc := NewService(store)
+
+	got, err := svc.ListWorkspacesForUser(context.Background(), "u1")
+	if err != nil {
+		t.Fatalf("ListWorkspacesForUser: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len = %d, want 2; got=%+v", len(got), got)
+	}
+
+	empty, err := svc.ListWorkspacesForUser(context.Background(), "  ")
+	if err != nil {
+		t.Fatalf("empty user: %v", err)
+	}
+	if empty != nil {
+		t.Fatalf("empty user workspaces = %+v, want nil", empty)
 	}
 }
 

@@ -1,141 +1,157 @@
 {{define "title"}}{{.DisplayKey}} — {{.Issue.Title}} — Forgeboard{{end}}
 {{define "content"}}
 <main class="page">
+  {{template "app_chrome" .Chrome}}
   <div class="page__main">
-    <div class="stack">
-      <p>
-        <code>{{.DisplayKey}}</code> · {{.PriorityLabel}} · {{.AssigneeLabel}}
-        {{if .Issue.Archived}} · Archived{{end}}
-      </p>
-      <h1>{{.Issue.Title}}</h1>
-      <p>
-        In project <a href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">{{.Project.Name}}</a>
-        ({{.WorkspaceName}}){{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.
-      </p>
-
-      <div class="stack">
-        <h2>Labels</h2>
-        {{if .Labels}}
-        <div class="cluster">
-          {{range .Labels}}
-          <span class="issue-label" style="--label-color: {{.Color}}">{{.Name}}</span>
-          {{if and $.CanEdit (not $.Issue.Archived)}}
-          <form method="post" action="/w/{{$.WorkspaceSlug}}/issues/{{$.Issue.IssueNumber}}/labels/{{.ID}}/remove">
-            {{template "csrf_field" $.CSRFToken}}
-            <input type="hidden" name="redirect_to" value="/w/{{$.WorkspaceSlug}}/projects/{{$.Project.Slug}}/issues/{{$.Issue.IssueNumber}}">
-            <button class="button" type="submit">Remove {{.Name}}</button>
-          </form>
-          {{end}}
-          {{end}}
+    <div class="stack stack--lg">
+      <header class="page-header">
+        <div class="page-header__text">
+          <p class="u-text-muted u-m-0">
+            <code>{{.DisplayKey}}</code> · {{.PriorityLabel}} · {{.AssigneeLabel}}
+            {{if .Issue.Archived}} · Archived{{end}}
+          </p>
+          <h1 class="page-header__title">{{.Issue.Title}}</h1>
+          <p class="page-header__lede">
+            In project <a href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">{{.Project.Name}}</a>
+          </p>
         </div>
-        {{else}}
-        <p>No labels attached.</p>
-        {{end}}
+        <div class="page-header__actions cluster">
+          <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">All issues</a>
+        </div>
+      </header>
 
-        {{if and .CanEdit (not .Issue.Archived) .Available}}
-        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/labels" style="max-inline-size: 32rem;">
-          {{template "csrf_field" .CSRFToken}}
-          <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
-          <div class="form-field">
-            <label class="form-field__label" for="label_id">Add label</label>
-            <select class="form-field__input" id="label_id" name="label_id" required>
-              <option value="">Select a label</option>
-              {{range .Available}}
-              <option value="{{.ID}}">{{.Name}}</option>
+      <div class="layout-split">
+        <div class="stack stack--lg">
+          <section class="panel">
+            <h2 class="panel__title">Labels</h2>
+            <div class="panel__body">
+              {{if .Labels}}
+              <div class="cluster">
+                {{range .Labels}}
+                <span class="issue-label" style="--label-color: {{.Color}}">{{.Name}}</span>
+                {{if and $.CanEdit (not $.Issue.Archived)}}
+                <form method="post" action="/w/{{$.WorkspaceSlug}}/issues/{{$.Issue.IssueNumber}}/labels/{{.ID}}/remove">
+                  {{template "csrf_field" $.CSRFToken}}
+                  <input type="hidden" name="redirect_to" value="/w/{{$.WorkspaceSlug}}/projects/{{$.Project.Slug}}/issues/{{$.Issue.IssueNumber}}">
+                  <button class="button" type="submit">Remove {{.Name}}</button>
+                </form>
+                {{end}}
+                {{end}}
+              </div>
+              {{else}}
+              <p class="u-m-0">No labels attached.</p>
               {{end}}
-            </select>
-          </div>
-          <div class="cluster">
-            <button class="button" type="submit">Attach label</button>
-            <a class="button" href="/w/{{.WorkspaceSlug}}/labels">Manage labels</a>
-          </div>
-        </form>
-        {{else if and .CanEdit (not .Issue.Archived)}}
-        <p><a href="/w/{{.WorkspaceSlug}}/labels">Create a label</a> to tag this issue.</p>
-        {{end}}
-      </div>
 
-      {{if .Issue.Description}}
-      <div class="stack">
-        <h2>Description</h2>
-        <p>{{.Issue.Description}}</p>
-      </div>
-      {{else}}
-      <p>No description.</p>
-      {{end}}
-
-      <div class="stack" style="max-inline-size: 32rem;">
-        <h2>Status</h2>
-        {{template "issue_status_panel" .}}
-      </div>
-
-      {{if and .CanEdit (not .Issue.Archived)}}
-      <div class="stack" style="max-inline-size: 32rem;">
-        <h2>Workflow</h2>
-
-        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/priority">
-          {{template "csrf_field" .CSRFToken}}
-          <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
-          <div class="form-field">
-            <label class="form-field__label" for="priority">Priority</label>
-            <select class="form-field__input" id="priority" name="priority">
-              {{range .Priorities}}
-              <option value="{{.Value}}"{{if eq $.Issue.Priority .Value}} selected{{end}}>{{.Label}}</option>
+              {{if and .CanEdit (not .Issue.Archived) .Available}}
+              <form class="stack measure--md" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/labels">
+                {{template "csrf_field" .CSRFToken}}
+                <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
+                <div class="form-field">
+                  <label class="form-field__label" for="label_id">Add label</label>
+                  <select class="form-field__input" id="label_id" name="label_id" required>
+                    <option value="">Select a label</option>
+                    {{range .Available}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                  </select>
+                </div>
+                <div class="cluster">
+                  <button class="button" type="submit">Attach label</button>
+                  <a class="button" href="/w/{{.WorkspaceSlug}}/labels">Manage labels</a>
+                </div>
+              </form>
+              {{else if and .CanEdit (not .Issue.Archived)}}
+              <p class="u-m-0"><a href="/w/{{.WorkspaceSlug}}/labels">Create a label</a> to tag this issue.</p>
               {{end}}
-            </select>
-          </div>
-          <div class="cluster">
-            <button class="button" type="submit">Update priority</button>
-          </div>
-        </form>
+            </div>
+          </section>
 
-        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/assignee">
-          {{template "csrf_field" .CSRFToken}}
-          <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
-          <div class="form-field">
-            <label class="form-field__label" for="assignee_id">Assignee</label>
-            <select class="form-field__input" id="assignee_id" name="assignee_id">
-              <option value=""{{if eq .Issue.AssigneeID ""}} selected{{end}}>Unassigned</option>
-              {{range .Members}}
-              <option value="{{.UserID}}"{{if eq $.Issue.AssigneeID .UserID}} selected{{end}}>{{.DisplayName}}</option>
+          <section class="panel">
+            <h2 class="panel__title">Description</h2>
+            <div class="panel__body">
+              {{if .Issue.Description}}
+              <p class="u-m-0">{{.Issue.Description}}</p>
+              {{else}}
+              <p class="u-m-0 u-text-muted">No description.</p>
               {{end}}
-            </select>
-          </div>
-          <div class="cluster">
-            <button class="button" type="submit">Update assignee</button>
-          </div>
-        </form>
+            </div>
+          </section>
 
-        <form method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/archive">
-          {{template "csrf_field" .CSRFToken}}
-          <button class="button button--danger" type="submit">Archive issue</button>
-        </form>
-      </div>
-      {{end}}
+          <section class="panel">
+            <h2 class="panel__title">Comments</h2>
+            <div class="panel__body">
+              {{template "comment_count" .}}
 
-      <div class="stack">
-        <h2>Comments</h2>
-        {{template "comment_count" .}}
+              <div id="comment-list" class="stack">
+                {{range .Comments}}
+                {{template "comment_item" .}}
+                {{else}}
+                <p id="comment-list-empty">No comments yet.</p>
+                {{end}}
+              </div>
 
-        <div id="comment-list" class="stack">
-          {{range .Comments}}
-          {{template "comment_item" .}}
-          {{else}}
-          <p id="comment-list-empty">No comments yet.</p>
-          {{end}}
+              {{if and .CanComment (not .Issue.Archived)}}
+              {{template "comment_form" .CommentForm}}
+              {{else if not .CanComment}}
+              <p class="u-m-0 u-text-muted">Viewers can read comments but cannot post.</p>
+              {{end}}
+            </div>
+          </section>
         </div>
 
-        {{if and .CanComment (not .Issue.Archived)}}
-        {{template "comment_form" .CommentForm}}
-        {{else if not .CanComment}}
-        <p>Viewers can read comments but cannot post.</p>
-        {{end}}
-      </div>
+        <aside class="stack stack--lg">
+          <section class="panel">
+            <h2 class="panel__title">Status</h2>
+            <div class="panel__body">
+              {{template "issue_status_panel" .}}
+            </div>
+          </section>
 
-      <div class="cluster">
-        <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues">All issues</a>
-        <a class="button" href="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}">Project</a>
-        <a class="button" href="/app">Back to app</a>
+          {{if and .CanEdit (not .Issue.Archived)}}
+          <section class="panel">
+            <h2 class="panel__title">Workflow</h2>
+            <div class="panel__body">
+              <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/priority">
+                {{template "csrf_field" .CSRFToken}}
+                <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
+                <div class="form-field">
+                  <label class="form-field__label" for="priority">Priority</label>
+                  <select class="form-field__input" id="priority" name="priority">
+                    {{range .Priorities}}
+                    <option value="{{.Value}}"{{if eq $.Issue.Priority .Value}} selected{{end}}>{{.Label}}</option>
+                    {{end}}
+                  </select>
+                </div>
+                <div class="cluster">
+                  <button class="button" type="submit">Update priority</button>
+                </div>
+              </form>
+
+              <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/assignee">
+                {{template "csrf_field" .CSRFToken}}
+                <input type="hidden" name="redirect_to" value="/w/{{.WorkspaceSlug}}/projects/{{.Project.Slug}}/issues/{{.Issue.IssueNumber}}">
+                <div class="form-field">
+                  <label class="form-field__label" for="assignee_id">Assignee</label>
+                  <select class="form-field__input" id="assignee_id" name="assignee_id">
+                    <option value=""{{if eq .Issue.AssigneeID ""}} selected{{end}}>Unassigned</option>
+                    {{range .Members}}
+                    <option value="{{.UserID}}"{{if eq $.Issue.AssigneeID .UserID}} selected{{end}}>{{.DisplayName}}</option>
+                    {{end}}
+                  </select>
+                </div>
+                <div class="cluster">
+                  <button class="button" type="submit">Update assignee</button>
+                </div>
+              </form>
+
+              <form method="post" action="/w/{{.WorkspaceSlug}}/issues/{{.Issue.IssueNumber}}/archive">
+                {{template "csrf_field" .CSRFToken}}
+                <button class="button button--danger" type="submit">Archive issue</button>
+              </form>
+            </div>
+          </section>
+          {{end}}
+        </aside>
       </div>
     </div>
   </div>

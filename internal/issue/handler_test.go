@@ -46,6 +46,10 @@ func (s *authzMemberStore) GetAccessBySlug(_ context.Context, slug, userID strin
 
 func (s *authzMemberStore) HasAny(context.Context, string) (bool, error) { return true, nil }
 
+func (s *authzMemberStore) ListByUser(context.Context, string) ([]member.UserWorkspace, error) {
+	return nil, nil
+}
+
 func (s *authzMemberStore) ListByWorkspace(context.Context, string) ([]member.MemberView, error) {
 	return nil, nil
 }

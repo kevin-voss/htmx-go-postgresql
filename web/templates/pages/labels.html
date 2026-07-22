@@ -1,76 +1,82 @@
 {{define "title"}}Labels — {{.WorkspaceName}} — Forgeboard{{end}}
 {{define "content"}}
 <main class="page">
+  {{template "app_chrome" .Chrome}}
   <div class="page__main">
-    <div class="stack">
-      <h1>Labels</h1>
-      <p>Workspace tags for {{.WorkspaceName}}{{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.</p>
+    <div class="stack stack--lg">
+      <header class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-header__title">Labels</h1>
+          <p class="page-header__lede">Workspace tags for {{.WorkspaceName}}</p>
+        </div>
+      </header>
 
-      {{if .Labels}}
-      <ul class="stack">
-        {{range .Labels}}
-        <li class="cluster">
-          <span class="issue-label" style="--label-color: {{.Color}}">{{.Name}}</span>
-          {{if $.CanEdit}}
-          <form method="post" action="/w/{{$.WorkspaceSlug}}/labels/{{.ID}}/delete">
-            {{template "csrf_field" $.CSRFToken}}
-            <button class="button button--danger" type="submit">Delete</button>
-          </form>
+      <section class="panel">
+        <h2 class="panel__title">All labels</h2>
+        <div class="panel__body">
+          {{if .Labels}}
+          <ul class="stack">
+            {{range .Labels}}
+            <li class="cluster">
+              <span class="issue-label" style="--label-color: {{.Color}}">{{.Name}}</span>
+              {{if $.CanEdit}}
+              <form method="post" action="/w/{{$.WorkspaceSlug}}/labels/{{.ID}}/delete">
+                {{template "csrf_field" $.CSRFToken}}
+                <button class="button button--danger" type="submit">Delete</button>
+              </form>
+              {{end}}
+            </li>
+            {{end}}
+          </ul>
+          {{else}}
+          <p class="u-m-0">No labels yet.</p>
           {{end}}
-        </li>
-        {{end}}
-      </ul>
-      {{else}}
-      <p>No labels yet.</p>
-      {{end}}
+        </div>
+      </section>
 
       {{if .CanEdit}}
-      <div class="stack" style="max-inline-size: 28rem;">
-        <h2>New label</h2>
-        <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/labels" novalidate>
-          {{template "csrf_field" .CSRFToken}}
-          <div class="form-field">
-            <label class="form-field__label" for="name">Name</label>
-            <input
-              class="form-field__input"
-              type="text"
-              id="name"
-              name="name"
-              required
-              maxlength="40"
-              value="{{.Form.Name}}"
-            >
-            {{with .Errors.Name}}
-            <p class="form-field__error">{{.}}</p>
-            {{end}}
-          </div>
-          <div class="form-field">
-            <label class="form-field__label" for="color">Color</label>
-            <input
-              class="form-field__input"
-              type="text"
-              id="color"
-              name="color"
-              maxlength="7"
-              placeholder="#64748b"
-              value="{{.Form.Color}}"
-            >
-            {{with .Errors.Color}}
-            <p class="form-field__error">{{.}}</p>
-            {{end}}
-          </div>
-          <div class="cluster">
-            <button class="button button--primary" type="submit">Create label</button>
-          </div>
-        </form>
-      </div>
+      <section class="panel measure">
+        <h2 class="panel__title">New label</h2>
+        <div class="panel__body">
+          <form class="stack" method="post" action="/w/{{.WorkspaceSlug}}/labels" novalidate>
+            {{template "csrf_field" .CSRFToken}}
+            <div class="form-field">
+              <label class="form-field__label" for="name">Name</label>
+              <input
+                class="form-field__input"
+                type="text"
+                id="name"
+                name="name"
+                required
+                maxlength="40"
+                value="{{.Form.Name}}"
+              >
+              {{with .Errors.Name}}
+              <p class="form-field__error">{{.}}</p>
+              {{end}}
+            </div>
+            <div class="form-field">
+              <label class="form-field__label" for="color">Color</label>
+              <input
+                class="form-field__input"
+                type="text"
+                id="color"
+                name="color"
+                maxlength="7"
+                placeholder="#64748b"
+                value="{{.Form.Color}}"
+              >
+              {{with .Errors.Color}}
+              <p class="form-field__error">{{.}}</p>
+              {{end}}
+            </div>
+            <div class="cluster">
+              <button class="button button--primary" type="submit">Create label</button>
+            </div>
+          </form>
+        </div>
+      </section>
       {{end}}
-
-      <div class="cluster">
-        <a class="button" href="/w/{{.WorkspaceSlug}}">Workspace</a>
-        <a class="button" href="/w/{{.WorkspaceSlug}}/projects">Projects</a>
-        <a class="button" href="/app">Back to app</a>
-      </div>
     </div>
   </div>
 </main>

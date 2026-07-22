@@ -13,6 +13,7 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/request"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/ui"
 )
 
 // Handler serves project HTTP endpoints.
@@ -73,6 +74,7 @@ type listPageData struct {
 	CanCreate     bool
 	Form          createFormData
 	Errors        CreateErrors
+	Chrome        ui.Chrome
 }
 
 type createFormData struct {
@@ -89,6 +91,7 @@ type showPageData struct {
 	User          auth.User
 	Role          string
 	Events        []activityItemData
+	Chrome        ui.Chrome
 }
 
 type activityItemData struct {
@@ -119,8 +122,9 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	csrf := middleware.CSRFToken(r.Context())
 	h.renderList(w, http.StatusOK, listPageData{
-		CSRFToken:     middleware.CSRFToken(r.Context()),
+		CSRFToken:     csrf,
 		WorkspaceID:   ws.ID,
 		WorkspaceName: ws.Name,
 		WorkspaceSlug: ws.Slug,
@@ -128,6 +132,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		User:          user,
 		Role:          role,
 		CanCreate:     member.Role(role).CanMutate(),
+		Chrome:        projectListChrome(user.DisplayName, csrf, ws.Name, ws.Slug, role),
 	})
 }
 
@@ -168,8 +173,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		csrf := middleware.CSRFToken(r.Context())
 		h.renderList(w, http.StatusUnprocessableEntity, listPageData{
-			CSRFToken:     middleware.CSRFToken(r.Context()),
+			CSRFToken:     csrf,
 			WorkspaceID:   ws.ID,
 			WorkspaceName: ws.Name,
 			WorkspaceSlug: ws.Slug,
@@ -182,6 +188,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 				Slug: strings.ToLower(strings.TrimSpace(r.FormValue("slug"))),
 			},
 			Errors: fieldErrs,
+			Chrome: projectListChrome(user.DisplayName, csrf, ws.Name, ws.Slug, role),
 		})
 		return
 	}
@@ -240,8 +247,9 @@ func (h *Handler) show(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	csrf := middleware.CSRFToken(r.Context())
 	data := showPageData{
-		CSRFToken:     middleware.CSRFToken(r.Context()),
+		CSRFToken:     csrf,
 		WorkspaceID:   ws.ID,
 		WorkspaceName: ws.Name,
 		WorkspaceSlug: ws.Slug,
@@ -249,6 +257,12 @@ func (h *Handler) show(w http.ResponseWriter, r *http.Request) {
 		User:          user,
 		Role:          role,
 		Events:        events,
+		Chrome: ui.Workspace(user.DisplayName, csrf, ws.Name, ws.Slug, role, ui.NavProjects,
+			ui.Crumb{Label: "App", Href: "/app"},
+			ui.Crumb{Label: ws.Name, Href: "/w/" + ws.Slug},
+			ui.Crumb{Label: "Projects", Href: "/w/" + ws.Slug + "/projects"},
+			ui.Crumb{Label: p.Name},
+		),
 	}
 
 	var errRender error
@@ -277,6 +291,14 @@ func workspaceFromAccessContext(r *http.Request) (workspaceAccess, bool) {
 		return workspaceAccess{}, false
 	}
 	return workspaceAccess{ID: id, Name: name, Slug: slug}, true
+}
+
+func projectListChrome(displayName, csrf, name, slug, role string) ui.Chrome {
+	return ui.Workspace(displayName, csrf, name, slug, role, ui.NavProjects,
+		ui.Crumb{Label: "App", Href: "/app"},
+		ui.Crumb{Label: name, Href: "/w/" + slug},
+		ui.Crumb{Label: "Projects"},
+	)
 }
 
 func (h *Handler) renderList(w http.ResponseWriter, status int, data listPageData) {

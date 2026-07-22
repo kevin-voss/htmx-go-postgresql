@@ -1,21 +1,47 @@
 {{define "title"}}{{.Workspace.Name}} — Forgeboard{{end}}
 {{define "content"}}
 <main class="page">
+  {{template "app_chrome" .Chrome}}
   <div class="page__main">
-    <div class="stack">
-      <h1>{{.Workspace.Name}}</h1>
-      <p>Workspace <code>/w/{{.Workspace.Slug}}</code>{{with .User}} · signed in as {{.DisplayName}}{{end}}{{with .Role}} · {{.}}{{end}}.</p>
-      <p>Open projects or manage members for this workspace.</p>
-      <div class="cluster">
-        <a class="button" href="/app">Back to app</a>
-        <a class="button" href="/w/{{.Workspace.Slug}}/projects">Projects</a>
-        <a class="button" href="/w/{{.Workspace.Slug}}/labels">Labels</a>
-        <a class="button" href="/w/{{.Workspace.Slug}}/members">Members</a>
-        <a class="button" href="/app/workspaces/new">New workspace</a>
-        {{if eq .Role "owner"}}
-        <a class="button" href="/w/{{.Workspace.Slug}}/settings">Settings</a>
-        {{end}}
-      </div>
+    <div class="stack stack--lg">
+      <header class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-header__title">{{.Workspace.Name}}</h1>
+          <p class="page-header__lede">Workspace <code>/w/{{.Workspace.Slug}}</code></p>
+        </div>
+        <div class="page-header__actions cluster">
+          <a class="button button--primary" href="/w/{{.Workspace.Slug}}/projects">All projects</a>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2 class="panel__title">Projects</h2>
+        <div class="panel__body">
+          {{if .Projects}}
+          <div class="grid grid--cards">
+            {{range .Projects}}
+            <article class="card">
+              <div class="card__header">
+                <p class="card__title">
+                  <a href="/w/{{$.Workspace.Slug}}/projects/{{.Slug}}">{{.Name}}</a>
+                </p>
+              </div>
+              <p class="card__meta"><code>/w/{{$.Workspace.Slug}}/projects/{{.Slug}}</code></p>
+              <div class="cluster">
+                <a class="button button--primary" href="/w/{{$.Workspace.Slug}}/projects/{{.Slug}}/issues">Issues</a>
+                <a class="button" href="/w/{{$.Workspace.Slug}}/projects/{{.Slug}}">Overview</a>
+              </div>
+            </article>
+            {{end}}
+          </div>
+          {{else}}
+          <p class="u-m-0">No projects yet.</p>
+          <div class="cluster">
+            <a class="button button--primary" href="/w/{{.Workspace.Slug}}/projects">Create a project</a>
+          </div>
+          {{end}}
+        </div>
+      </section>
     </div>
   </div>
 </main>

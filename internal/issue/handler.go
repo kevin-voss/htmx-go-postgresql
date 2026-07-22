@@ -14,6 +14,7 @@ import (
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/render"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/request"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/ui"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/project"
 )
 
@@ -201,6 +202,7 @@ type listPageData struct {
 	Labels        []Label
 	Filter        ListFilter
 	FilterActive  bool
+	Chrome        ui.Chrome
 }
 
 type createFormData struct {
@@ -247,6 +249,7 @@ type showPageData struct {
 	Statuses      []optionData
 	Priorities    []optionData
 	Members       []memberOption
+	Chrome        ui.Chrome
 }
 
 type labelsPageData struct {
@@ -260,6 +263,7 @@ type labelsPageData struct {
 	Labels        []Label
 	Form          createLabelFormData
 	Errors        CreateLabelErrors
+	Chrome        ui.Chrome
 }
 
 type createLabelFormData struct {
@@ -350,6 +354,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		Labels:        workspaceLabels,
 		Filter:        filter,
 		FilterActive:  filter.Active(),
+		Chrome:        issueListChrome(user.DisplayName, csrf, ws.Name, ws.Slug, role, p),
 	}
 	if request.IsPartialRequest(r) {
 		if err := h.render.RenderFragment(w, http.StatusOK, "issue_list", "issue_list_results", data); err != nil {
@@ -456,6 +461,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 			Priorities: priorityOptions(),
 			Members:    memberOpts,
 			Labels:     workspaceLabels,
+			Chrome:     issueListChrome(user.DisplayName, csrf, ws.Name, ws.Slug, role, p),
 		})
 		return
 	}
@@ -718,8 +724,9 @@ func (h *Handler) listLabels(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	csrf := middleware.CSRFToken(r.Context())
 	h.renderLabels(w, http.StatusOK, labelsPageData{
-		CSRFToken:     middleware.CSRFToken(r.Context()),
+		CSRFToken:     csrf,
 		WorkspaceID:   ws.ID,
 		WorkspaceName: ws.Name,
 		WorkspaceSlug: ws.Slug,
@@ -728,6 +735,7 @@ func (h *Handler) listLabels(w http.ResponseWriter, r *http.Request) {
 		CanEdit:       member.Role(role).CanMutate(),
 		Labels:        labels,
 		Form:          createLabelFormData{Color: defaultColor},
+		Chrome:        labelsChrome(user.DisplayName, csrf, ws.Name, ws.Slug, role),
 	})
 }
 
@@ -769,8 +777,9 @@ func (h *Handler) createLabel(w http.ResponseWriter, r *http.Request) {
 		if color == "" {
 			color = defaultColor
 		}
+		csrf := middleware.CSRFToken(r.Context())
 		h.renderLabels(w, http.StatusUnprocessableEntity, labelsPageData{
-			CSRFToken:     middleware.CSRFToken(r.Context()),
+			CSRFToken:     csrf,
 			WorkspaceID:   ws.ID,
 			WorkspaceName: ws.Name,
 			WorkspaceSlug: ws.Slug,
@@ -783,6 +792,7 @@ func (h *Handler) createLabel(w http.ResponseWriter, r *http.Request) {
 				Color: color,
 			},
 			Errors: fieldErrs,
+			Chrome: labelsChrome(user.DisplayName, csrf, ws.Name, ws.Slug, role),
 		})
 		return
 	}
@@ -1058,6 +1068,7 @@ func (h *Handler) renderShowPage(
 		}
 	}
 
+	displayKey := DisplayKey(p.Slug, issue.IssueNumber)
 	h.renderShow(w, showPageData{
 		CSRFToken:     csrf,
 		WorkspaceID:   ws.ID,
@@ -1065,7 +1076,7 @@ func (h *Handler) renderShowPage(
 		WorkspaceSlug: ws.Slug,
 		Project:       p,
 		Issue:         issue,
-		DisplayKey:    DisplayKey(p.Slug, issue.IssueNumber),
+		DisplayKey:    displayKey,
 		StatusLabel:   StatusLabel(issue.Status),
 		PriorityLabel: PriorityLabel(issue.Priority),
 		AssigneeLabel: assigneeLabel(issue.AssigneeID, members),
@@ -1085,7 +1096,32 @@ func (h *Handler) renderShowPage(
 		Statuses:   statusOptions(),
 		Priorities: priorityOptions(),
 		Members:    memberOpts,
+		Chrome: ui.Workspace(user.DisplayName, csrf, ws.Name, ws.Slug, role, ui.NavProjects,
+			ui.Crumb{Label: "App", Href: "/app"},
+			ui.Crumb{Label: ws.Name, Href: "/w/" + ws.Slug},
+			ui.Crumb{Label: "Projects", Href: "/w/" + ws.Slug + "/projects"},
+			ui.Crumb{Label: p.Name, Href: "/w/" + ws.Slug + "/projects/" + p.Slug},
+			ui.Crumb{Label: displayKey},
+		),
 	})
+}
+
+func issueListChrome(displayName, csrf, name, slug, role string, p project.Project) ui.Chrome {
+	return ui.Workspace(displayName, csrf, name, slug, role, ui.NavProjects,
+		ui.Crumb{Label: "App", Href: "/app"},
+		ui.Crumb{Label: name, Href: "/w/" + slug},
+		ui.Crumb{Label: "Projects", Href: "/w/" + slug + "/projects"},
+		ui.Crumb{Label: p.Name, Href: "/w/" + slug + "/projects/" + p.Slug},
+		ui.Crumb{Label: "Issues"},
+	)
+}
+
+func labelsChrome(displayName, csrf, name, slug, role string) ui.Chrome {
+	return ui.Workspace(displayName, csrf, name, slug, role, ui.NavLabels,
+		ui.Crumb{Label: "App", Href: "/app"},
+		ui.Crumb{Label: name, Href: "/w/" + slug},
+		ui.Crumb{Label: "Labels"},
+	)
 }
 
 func (h *Handler) loadMembers(r *http.Request, workspaceID string) ([]member.MemberView, []memberOption, error) {

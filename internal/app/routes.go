@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
+	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/ui"
 	"github.com/kevin-voss/htmx-go-postgresql/web"
 )
 
@@ -52,8 +54,10 @@ func (a *Application) health(w http.ResponseWriter, r *http.Request) {
 }
 
 type appPageData struct {
-	CSRFToken string
-	User      auth.User
+	CSRFToken  string
+	User       auth.User
+	Workspaces []member.UserWorkspace
+	Chrome     ui.Chrome
 }
 
 func (a *Application) appDashboard(w http.ResponseWriter, r *http.Request) {
@@ -63,20 +67,23 @@ func (a *Application) appDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	has, err := a.Members.HasAnyMembership(r.Context(), user.ID)
+	workspaces, err := a.Members.ListWorkspacesForUser(r.Context(), user.ID)
 	if err != nil {
-		a.Logger.Error("check memberships failed", "err", err, "user_id", user.ID)
+		a.Logger.Error("list workspaces failed", "err", err, "user_id", user.ID)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	if !has {
+	if len(workspaces) == 0 {
 		http.Redirect(w, r, "/app/onboarding", http.StatusSeeOther)
 		return
 	}
 
+	csrf := middleware.CSRFToken(r.Context())
 	data := appPageData{
-		CSRFToken: middleware.CSRFToken(r.Context()),
-		User:      user,
+		CSRFToken:  csrf,
+		User:       user,
+		Workspaces: workspaces,
+		Chrome:     ui.App(user.DisplayName, csrf, ui.Crumb{Label: "App"}),
 	}
 	if err := a.Render.Render(w, http.StatusOK, "app", data); err != nil {
 		a.Logger.Error("render app dashboard failed", "err", err)
