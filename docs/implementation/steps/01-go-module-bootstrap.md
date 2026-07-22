@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-01` |
 | Milestone | M1 — Foundation |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | — (first step) |
 | Unlocks | STEP-02 |
 | Estimated scope | S |
@@ -46,11 +46,11 @@ Bootstrap the Forgeboard repository as a Go module. Create the empty modular-mon
 
 ## Implementation checklist
 
-- [ ] Create go.mod
-- [ ] Create cmd/web/main.go
-- [ ] Create internal/* skeleton dirs
-- [ ] Add .gitignore and .env.example
-- [ ] Verify go build ./...
+- [x] Create go.mod
+- [x] Create cmd/web/main.go
+- [x] Create internal/* skeleton dirs
+- [x] Add .gitignore and .env.example
+- [x] Verify go build ./...
 
 ## Files to create / modify
 
@@ -68,10 +68,10 @@ Use net/http later — do not add Chi/Gin/Echo. Do not introduce sqlc yet. Modul
 
 ## Acceptance criteria
 
-- [ ] `go build ./...` succeeds
-- [ ] Directory layout matches docs/architecture/project-structure.md at a high level
-- [ ] .env.example exists and contains no real secrets
-- [ ] .gitignore excludes .env and build artifacts
+- [x] `go build ./...` succeeds
+- [x] Directory layout matches docs/architecture/project-structure.md at a high level
+- [x] .env.example exists and contains no real secrets
+- [x] .gitignore excludes .env and build artifacts
 
 ## Verification
 
@@ -80,7 +80,9 @@ go build ./...
 ls cmd/web internal
 ```
 
-## Commit
+## Commit & push (mandatory)
+
+The agent **must** commit and push before stopping. Completing this step includes publishing to `origin` — do not wait for a separate human “please commit” message.
 
 **Subject (required):**
 
@@ -88,14 +90,37 @@ ls cmd/web internal
 chore(step-01): bootstrap Go module and package layout
 ```
 
-**Body (optional):**
+**Body (recommended):**
 
 ```text
 Complete STEP-01 so the next agent can continue from a green tree.
 ```
 
+**Required actions:**
+
+- [ ] Update `docs/implementation/STATUS.md` for this step → `done`
+- [ ] Stage only this step’s files (+ `STATUS.md` and the step file if status/checkboxes changed)
+- [ ] Create exactly one commit with the subject above (HEREDOC)
+- [ ] `git push -u origin HEAD`
+- [ ] Confirm `git status` is clean and not ahead of `origin`
+- [ ] Stop — do not start STEP-02
+
+```bash
+git add <paths for this step> docs/implementation/STATUS.md
+git commit -m "$(cat <<'EOF'
+chore(step-01): bootstrap Go module and package layout
+
+Complete STEP-01 so the next agent can continue from a green tree.
+EOF
+)"
+git push -u origin HEAD
+git status
+```
+
+Never commit `.env` or secrets. Never `--force` push to `main`.
+
 ## Handoff to next agent
 
-Module path is ____. Skeleton packages may be empty; step 02 adds Compose.
+Module path is `github.com/kevin-voss/htmx-go-postgresql` (matches git remote). Skeleton packages are empty (`.gitkeep` only); step 02 adds Compose.
 
-After commit, mark this step `done` in any tracker and **stop** — do not start STEP-02.
+After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-02.
