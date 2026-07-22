@@ -33,9 +33,22 @@ type MembershipChecker interface {
 	IsMember(ctx context.Context, workspaceID, userID string) (bool, error)
 }
 
+// LabelStore is the persistence port for workspace labels and issue tagging.
+type LabelStore interface {
+	CreateLabel(ctx context.Context, workspaceID, name, color string) (Label, error)
+	ListLabelsByWorkspace(ctx context.Context, workspaceID string) ([]Label, error)
+	GetLabelByID(ctx context.Context, id string) (Label, error)
+	DeleteLabel(ctx context.Context, id string) error
+	AttachLabel(ctx context.Context, issueID, labelID string) error
+	DetachLabel(ctx context.Context, issueID, labelID string) error
+	ListLabelsForIssue(ctx context.Context, issueID string) ([]Label, error)
+	ListLabelsForIssues(ctx context.Context, issueIDs []string) (map[string][]Label, error)
+}
+
 // Service implements issue business rules.
 type Service struct {
 	store   Store
+	labels  LabelStore
 	members MembershipChecker
 }
 
@@ -47,6 +60,12 @@ func NewService(store Store) *Service {
 // WithMembershipChecker attaches workspace membership checks for assignees.
 func (s *Service) WithMembershipChecker(members MembershipChecker) *Service {
 	s.members = members
+	return s
+}
+
+// WithLabelStore attaches label persistence for tagging.
+func (s *Service) WithLabelStore(labels LabelStore) *Service {
+	s.labels = labels
 	return s
 }
 
@@ -165,4 +184,124 @@ func (s *Service) Archive(ctx context.Context, workspaceID string, issueNumber i
 		return Issue{}, fmt.Errorf("issue: archive: %w", err)
 	}
 	return updated, nil
+}
+
+// ListLabels returns all labels for a workspace.
+func (s *Service) ListLabels(ctx context.Context, workspaceID string) ([]Label, error) {
+	if workspaceID == "" || s.labels == nil {
+		return []Label{}, nil
+	}
+	return s.labels.ListLabelsByWorkspace(ctx, workspaceID)
+}
+
+// CreateLabel validates and persists a workspace label.
+func (s *Service) CreateLabel(ctx context.Context, in CreateLabelInput) (Label, CreateLabelErrors, error) {
+	if s.labels == nil {
+		return Label{}, CreateLabelErrors{}, fmt.Errorf("issue: create label: label store not configured")
+	}
+	normalized := normalizeCreateLabelInput(in)
+	fieldErrs := ValidateCreateLabel(normalized)
+	if fieldErrs.Any() {
+		return Label{}, fieldErrs, nil
+	}
+	if normalized.WorkspaceID == "" {
+		return Label{}, CreateLabelErrors{}, fmt.Errorf("issue: create label: missing workspace")
+	}
+
+	label, err := s.labels.CreateLabel(ctx, normalized.WorkspaceID, normalized.Name, normalized.Color)
+	if err != nil {
+		if errors.Is(err, ErrLabelExists) {
+			return Label{}, CreateLabelErrors{Name: "A label with this name already exists."}, nil
+		}
+		return Label{}, CreateLabelErrors{}, fmt.Errorf("issue: create label: %w", err)
+	}
+	return label, CreateLabelErrors{}, nil
+}
+
+// DeleteLabel removes a label from a workspace (must belong to that workspace).
+func (s *Service) DeleteLabel(ctx context.Context, workspaceID, labelID string) error {
+	if s.labels == nil {
+		return fmt.Errorf("issue: delete label: label store not configured")
+	}
+	label, err := s.labels.GetLabelByID(ctx, labelID)
+	if err != nil {
+		return err
+	}
+	if label.WorkspaceID != workspaceID {
+		return ErrLabelNotFound
+	}
+	if err := s.labels.DeleteLabel(ctx, labelID); err != nil {
+		return fmt.Errorf("issue: delete label: %w", err)
+	}
+	return nil
+}
+
+// LabelsForIssue returns labels attached to an issue.
+func (s *Service) LabelsForIssue(ctx context.Context, issueID string) ([]Label, error) {
+	if issueID == "" || s.labels == nil {
+		return []Label{}, nil
+	}
+	return s.labels.ListLabelsForIssue(ctx, issueID)
+}
+
+// LabelsForIssues returns attached labels keyed by issue id.
+func (s *Service) LabelsForIssues(ctx context.Context, issueIDs []string) (map[string][]Label, error) {
+	if len(issueIDs) == 0 || s.labels == nil {
+		return map[string][]Label{}, nil
+	}
+	return s.labels.ListLabelsForIssues(ctx, issueIDs)
+}
+
+// AttachLabel tags an issue with a workspace label.
+func (s *Service) AttachLabel(ctx context.Context, workspaceID string, issueNumber int, labelID string) (Issue, error) {
+	if s.labels == nil {
+		return Issue{}, fmt.Errorf("issue: attach label: label store not configured")
+	}
+	labelID = strings.TrimSpace(labelID)
+	if labelID == "" {
+		return Issue{}, ErrLabelNotFound
+	}
+
+	issue, err := s.GetByWorkspaceAndNumber(ctx, workspaceID, issueNumber)
+	if err != nil {
+		return Issue{}, err
+	}
+	label, err := s.labels.GetLabelByID(ctx, labelID)
+	if err != nil {
+		return Issue{}, err
+	}
+	if label.WorkspaceID != workspaceID {
+		return Issue{}, ErrLabelNotInWorkspace
+	}
+	if err := s.labels.AttachLabel(ctx, issue.ID, label.ID); err != nil {
+		return Issue{}, fmt.Errorf("issue: attach label: %w", err)
+	}
+	return issue, nil
+}
+
+// DetachLabel removes a label from an issue.
+func (s *Service) DetachLabel(ctx context.Context, workspaceID string, issueNumber int, labelID string) (Issue, error) {
+	if s.labels == nil {
+		return Issue{}, fmt.Errorf("issue: detach label: label store not configured")
+	}
+	labelID = strings.TrimSpace(labelID)
+	if labelID == "" {
+		return Issue{}, ErrLabelNotFound
+	}
+
+	issue, err := s.GetByWorkspaceAndNumber(ctx, workspaceID, issueNumber)
+	if err != nil {
+		return Issue{}, err
+	}
+	label, err := s.labels.GetLabelByID(ctx, labelID)
+	if err != nil {
+		return Issue{}, err
+	}
+	if label.WorkspaceID != workspaceID {
+		return Issue{}, ErrLabelNotInWorkspace
+	}
+	if err := s.labels.DetachLabel(ctx, issue.ID, label.ID); err != nil {
+		return Issue{}, err
+	}
+	return issue, nil
 }

@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-24` |
 | Milestone | M4 — Projects & issues |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-23 |
 | Unlocks | STEP-25 |
 | Estimated scope | M |
@@ -43,9 +43,9 @@ Add labels and issue_labels tables. Owners/members manage labels; viewers read.
 
 ## Implementation checklist
 
-- [ ] migrations
-- [ ] service/handlers
-- [ ] UI to add label to issue
+- [x] migrations
+- [x] service/handlers
+- [x] UI to add label to issue
 
 ## Files to create / modify
 
@@ -61,11 +61,11 @@ Labels are workspace-scoped per DB diagram.
 
 ## Acceptance criteria
 
-- [ ] Create label in workspace
-- [ ] Attach label to issue
-- [ ] Remove label from issue
-- [ ] Labels visible on issue UI
-- [ ] Non-member cannot manage labels
+- [x] Create label in workspace
+- [x] Attach label to issue
+- [x] Remove label from issue
+- [x] Labels visible on issue UI
+- [x] Non-member cannot manage labels
 
 ## Verification
 
@@ -94,12 +94,12 @@ STEP-24
 
 **Required actions:**
 
-- [ ] Update `docs/implementation/STATUS.md` → `done`
-- [ ] Stage this step’s files + `STATUS.md`
-- [ ] Commit with the subject and body above
-- [ ] `git push -u origin HEAD`
-- [ ] Confirm clean / not ahead of `origin`
-- [ ] Stop — do not start STEP-25
+- [x] Update `docs/implementation/STATUS.md` → `done`
+- [x] Stage this step’s files + `STATUS.md`
+- [x] Commit with the subject and body above
+- [x] `git push -u origin HEAD`
+- [x] Confirm clean / not ahead of `origin`
+- [x] Stop — do not start STEP-25
 
 Never commit `.env` or secrets. Never `--force` push to `main`.
 

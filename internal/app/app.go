@@ -78,7 +78,9 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 	)
 
 	issueRepo := issue.NewRepository(db)
-	issueService := issue.NewService(issueRepo).WithMembershipChecker(memberService)
+	issueService := issue.NewService(issueRepo).
+		WithMembershipChecker(memberService).
+		WithLabelStore(issueRepo)
 	issueHandler := issue.NewHandler(
 		issueService,
 		projectService,

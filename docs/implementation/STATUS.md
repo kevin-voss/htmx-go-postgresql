@@ -27,7 +27,7 @@ Track step completion here (or mirror into beads). Agents flip a row to `done` o
 | 21 | Projects | `done` | |
 | 22 | Issues core | `done` | |
 | 23 | Status / priority / assignee / archive | `done` | |
-| 24 | Labels | `todo` | |
+| 24 | Labels | `done` | |
 | 25 | Search & filter | `todo` | |
 | 26 | HTMX vendor & partials | `todo` | |
 | 27 | 422 fragments & inline UX | `todo` | |

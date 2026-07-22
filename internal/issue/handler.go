@@ -100,6 +100,43 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 		member.RequireCanMutate(),
 	)
 	mux.Handle("POST /w/{workspaceSlug}/issues/{issueNumber}/archive", auth.RequireAuthentication(archive))
+
+	listLabels := middleware.Chain(
+		http.HandlerFunc(h.listLabels),
+		member.RequireMembership(h.members, h.logger),
+	)
+	mux.Handle("GET /w/{workspaceSlug}/labels", auth.RequireAuthentication(listLabels))
+
+	createLabel := middleware.Chain(
+		http.HandlerFunc(h.createLabel),
+		member.RequireMembership(h.members, h.logger),
+		member.RequireCanMutate(),
+	)
+	mux.Handle("POST /w/{workspaceSlug}/labels", auth.RequireAuthentication(createLabel))
+
+	deleteLabel := middleware.Chain(
+		http.HandlerFunc(h.deleteLabel),
+		member.RequireMembership(h.members, h.logger),
+		member.RequireCanMutate(),
+	)
+	mux.Handle("POST /w/{workspaceSlug}/labels/{labelID}/delete", auth.RequireAuthentication(deleteLabel))
+
+	attachLabel := middleware.Chain(
+		http.HandlerFunc(h.attachLabel),
+		member.RequireMembership(h.members, h.logger),
+		member.RequireCanMutate(),
+	)
+	mux.Handle("POST /w/{workspaceSlug}/issues/{issueNumber}/labels", auth.RequireAuthentication(attachLabel))
+
+	detachLabel := middleware.Chain(
+		http.HandlerFunc(h.detachLabel),
+		member.RequireMembership(h.members, h.logger),
+		member.RequireCanMutate(),
+	)
+	mux.Handle(
+		"POST /w/{workspaceSlug}/issues/{issueNumber}/labels/{labelID}/remove",
+		auth.RequireAuthentication(detachLabel),
+	)
 }
 
 type listPageData struct {
@@ -133,6 +170,7 @@ type cardData struct {
 	StatusLabel    string
 	PriorityLabel  string
 	AssigneeLabel  string
+	Labels         []Label
 	CSRFToken      string
 	CanEdit        bool
 	Statuses       []optionData
@@ -151,12 +189,32 @@ type showPageData struct {
 	StatusLabel   string
 	PriorityLabel string
 	AssigneeLabel string
+	Labels        []Label
+	Available     []Label
 	User          auth.User
 	Role          string
 	CanEdit       bool
 	Statuses      []optionData
 	Priorities    []optionData
 	Members       []memberOption
+}
+
+type labelsPageData struct {
+	CSRFToken     string
+	WorkspaceID   string
+	WorkspaceName string
+	WorkspaceSlug string
+	User          auth.User
+	Role          string
+	CanEdit       bool
+	Labels        []Label
+	Form          createLabelFormData
+	Errors        CreateLabelErrors
+}
+
+type createLabelFormData struct {
+	Name  string
+	Color string
 }
 
 type optionData struct {
@@ -209,6 +267,13 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	labelsByIssue, err := h.labelsByIssueIDs(r, issues)
+	if err != nil {
+		h.logger.Error("list issue labels failed", "err", err, "project_id", p.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	csrf := middleware.CSRFToken(r.Context())
 	h.renderList(w, http.StatusOK, listPageData{
 		CSRFToken:     csrf,
@@ -216,7 +281,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		WorkspaceName: ws.Name,
 		WorkspaceSlug: ws.Slug,
 		Project:       p,
-		Cards:         cardsFor(ws.Slug, p.Slug, issues, csrf, canEdit, members, memberOpts),
+		Cards:         cardsFor(ws.Slug, p.Slug, issues, csrf, canEdit, members, memberOpts, labelsByIssue),
 		User:          user,
 		Role:          role,
 		CanCreate:     canEdit,
@@ -281,6 +346,12 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		labelsByIssue, labelErr := h.labelsByIssueIDs(r, issues)
+		if labelErr != nil {
+			h.logger.Error("list issue labels failed", "err", labelErr, "project_id", p.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		csrf := middleware.CSRFToken(r.Context())
 		h.renderList(w, http.StatusUnprocessableEntity, listPageData{
 			CSRFToken:     csrf,
@@ -288,7 +359,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 			WorkspaceName: ws.Name,
 			WorkspaceSlug: ws.Slug,
 			Project:       p,
-			Cards:         cardsFor(ws.Slug, p.Slug, issues, csrf, true, members, memberOpts),
+			Cards:         cardsFor(ws.Slug, p.Slug, issues, csrf, true, members, memberOpts, labelsByIssue),
 			User:          user,
 			Role:          role,
 			CanCreate:     true,
@@ -523,6 +594,173 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/w/"+ws.Slug+"/projects/"+p.Slug+"/issues", http.StatusSeeOther)
 }
 
+func (h *Handler) listLabels(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	ws, ok := workspaceFromAccessContext(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	role, _ := middleware.WorkspaceRoleFromContext(r.Context())
+	labels, err := h.service.ListLabels(r.Context(), ws.ID)
+	if err != nil {
+		h.logger.Error("list labels failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	h.renderLabels(w, http.StatusOK, labelsPageData{
+		CSRFToken:     middleware.CSRFToken(r.Context()),
+		WorkspaceID:   ws.ID,
+		WorkspaceName: ws.Name,
+		WorkspaceSlug: ws.Slug,
+		User:          user,
+		Role:          role,
+		CanEdit:       member.Role(role).CanMutate(),
+		Labels:        labels,
+		Form:          createLabelFormData{Color: defaultColor},
+	})
+}
+
+func (h *Handler) createLabel(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	ws, ok := workspaceFromAccessContext(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	role, _ := middleware.WorkspaceRoleFromContext(r.Context())
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	_, fieldErrs, err := h.service.CreateLabel(r.Context(), CreateLabelInput{
+		WorkspaceID: ws.ID,
+		Name:        r.FormValue("name"),
+		Color:       r.FormValue("color"),
+	})
+	if err != nil {
+		h.logger.Error("create label failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if fieldErrs.Any() {
+		labels, listErr := h.service.ListLabels(r.Context(), ws.ID)
+		if listErr != nil {
+			h.logger.Error("list labels failed", "err", listErr, "workspace_id", ws.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		color := strings.TrimSpace(r.FormValue("color"))
+		if color == "" {
+			color = defaultColor
+		}
+		h.renderLabels(w, http.StatusUnprocessableEntity, labelsPageData{
+			CSRFToken:     middleware.CSRFToken(r.Context()),
+			WorkspaceID:   ws.ID,
+			WorkspaceName: ws.Name,
+			WorkspaceSlug: ws.Slug,
+			User:          user,
+			Role:          role,
+			CanEdit:       true,
+			Labels:        labels,
+			Form: createLabelFormData{
+				Name:  strings.TrimSpace(r.FormValue("name")),
+				Color: color,
+			},
+			Errors: fieldErrs,
+		})
+		return
+	}
+	http.Redirect(w, r, "/w/"+ws.Slug+"/labels", http.StatusSeeOther)
+}
+
+func (h *Handler) deleteLabel(w http.ResponseWriter, r *http.Request) {
+	ws, ok := workspaceFromAccessContext(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	labelID := strings.TrimSpace(r.PathValue("labelID"))
+	if labelID == "" {
+		http.NotFound(w, r)
+		return
+	}
+	if err := h.service.DeleteLabel(r.Context(), ws.ID, labelID); err != nil {
+		if errors.Is(err, ErrLabelNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		h.logger.Error("delete label failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/w/"+ws.Slug+"/labels", http.StatusSeeOther)
+}
+
+func (h *Handler) attachLabel(w http.ResponseWriter, r *http.Request) {
+	ws, issueNumber, ok := h.parseWorkspaceIssue(w, r)
+	if !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	issue, err := h.service.AttachLabel(r.Context(), ws.ID, issueNumber, r.FormValue("label_id"))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLabelNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		if errors.Is(err, ErrLabelNotInWorkspace) {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+		h.logger.Error("attach label failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	h.redirectAfterMutation(w, r, ws.Slug, issue)
+}
+
+func (h *Handler) detachLabel(w http.ResponseWriter, r *http.Request) {
+	ws, issueNumber, ok := h.parseWorkspaceIssue(w, r)
+	if !ok {
+		return
+	}
+	labelID := strings.TrimSpace(r.PathValue("labelID"))
+	if labelID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	issue, err := h.service.DetachLabel(r.Context(), ws.ID, issueNumber, labelID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrLabelNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		if errors.Is(err, ErrLabelNotInWorkspace) {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+		h.logger.Error("detach label failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	h.redirectAfterMutation(w, r, ws.Slug, issue)
+}
+
 func (h *Handler) parseWorkspaceIssue(w http.ResponseWriter, r *http.Request) (workspaceAccess, int, bool) {
 	ws, ok := workspaceFromAccessContext(r)
 	if !ok {
@@ -571,6 +809,18 @@ func (h *Handler) renderShowPage(
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	attached, err := h.service.LabelsForIssue(r.Context(), issue.ID)
+	if err != nil {
+		h.logger.Error("list issue labels failed", "err", err, "issue_id", issue.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	allLabels, err := h.service.ListLabels(r.Context(), ws.ID)
+	if err != nil {
+		h.logger.Error("list labels failed", "err", err, "workspace_id", ws.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	canEdit := member.Role(role).CanMutate()
 	h.renderShow(w, showPageData{
 		CSRFToken:     middleware.CSRFToken(r.Context()),
@@ -583,6 +833,8 @@ func (h *Handler) renderShowPage(
 		StatusLabel:   StatusLabel(issue.Status),
 		PriorityLabel: PriorityLabel(issue.Priority),
 		AssigneeLabel: assigneeLabel(issue.AssigneeID, members),
+		Labels:        attached,
+		Available:     availableLabels(allLabels, attached),
 		User:          user,
 		Role:          role,
 		CanEdit:       canEdit,
@@ -604,6 +856,14 @@ func (h *Handler) loadMembers(r *http.Request, workspaceID string) ([]member.Mem
 	return members, opts, nil
 }
 
+func (h *Handler) labelsByIssueIDs(r *http.Request, issues []Issue) (map[string][]Label, error) {
+	ids := make([]string, 0, len(issues))
+	for _, issue := range issues {
+		ids = append(ids, issue.ID)
+	}
+	return h.service.LabelsForIssues(r.Context(), ids)
+}
+
 func cardsFor(
 	workspaceSlug, projectSlug string,
 	issues []Issue,
@@ -611,11 +871,16 @@ func cardsFor(
 	canEdit bool,
 	members []member.MemberView,
 	memberOpts []memberOption,
+	labelsByIssue map[string][]Label,
 ) []cardData {
 	statuses := statusOptions()
 	priorities := priorityOptions()
 	cards := make([]cardData, 0, len(issues))
 	for _, issue := range issues {
+		labels := labelsByIssue[issue.ID]
+		if labels == nil {
+			labels = []Label{}
+		}
 		cards = append(cards, cardData{
 			WorkspaceSlug: workspaceSlug,
 			ProjectSlug:   projectSlug,
@@ -624,6 +889,7 @@ func cardsFor(
 			StatusLabel:   StatusLabel(issue.Status),
 			PriorityLabel: PriorityLabel(issue.Priority),
 			AssigneeLabel: assigneeLabel(issue.AssigneeID, members),
+			Labels:        labels,
 			CSRFToken:     csrf,
 			CanEdit:       canEdit,
 			Statuses:      statuses,
@@ -632,6 +898,23 @@ func cardsFor(
 		})
 	}
 	return cards
+}
+
+func availableLabels(all, attached []Label) []Label {
+	attachedIDs := make(map[string]bool, len(attached))
+	for _, label := range attached {
+		attachedIDs[label.ID] = true
+	}
+	var available []Label
+	for _, label := range all {
+		if !attachedIDs[label.ID] {
+			available = append(available, label)
+		}
+	}
+	if available == nil {
+		available = []Label{}
+	}
+	return available
 }
 
 func statusOptions() []optionData {
@@ -688,6 +971,13 @@ func (h *Handler) renderList(w http.ResponseWriter, status int, data listPageDat
 func (h *Handler) renderShow(w http.ResponseWriter, data showPageData) {
 	if err := h.render.Render(w, http.StatusOK, "issue_show", data); err != nil {
 		h.logger.Error("render issue show failed", "err", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) renderLabels(w http.ResponseWriter, status int, data labelsPageData) {
+	if err := h.render.Render(w, status, "labels", data); err != nil {
+		h.logger.Error("render labels failed", "err", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

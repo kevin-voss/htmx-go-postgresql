@@ -8,6 +8,13 @@
       </a>
     </p>
     <p class="issue-card__meta">{{.StatusLabel}} · {{.PriorityLabel}} · {{.AssigneeLabel}}</p>
+    {{if .Labels}}
+    <div class="cluster">
+      {{range .Labels}}
+      <span class="issue-label" style="--label-color: {{.Color}}">{{.Name}}</span>
+      {{end}}
+    </div>
+    {{end}}
   </div>
 
   {{if .CanEdit}}

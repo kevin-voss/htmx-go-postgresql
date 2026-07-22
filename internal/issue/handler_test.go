@@ -121,6 +121,10 @@ func TestViewerCannotChangeIssueFields(t *testing.T) {
 		{http.MethodPost, "/w/acme/issues/1/assignee", "assignee_id="},
 		{http.MethodPatch, "/w/acme/issues/1/assignee", "assignee_id="},
 		{http.MethodPost, "/w/acme/issues/1/archive", ""},
+		{http.MethodPost, "/w/acme/labels", "name=bug&color=%2364748b"},
+		{http.MethodPost, "/w/acme/labels/label-1/delete", ""},
+		{http.MethodPost, "/w/acme/issues/1/labels", "label_id=label-1"},
+		{http.MethodPost, "/w/acme/issues/1/labels/label-1/remove", ""},
 	}
 
 	for _, tc := range cases {
@@ -141,6 +145,43 @@ func TestViewerCannotChangeIssueFields(t *testing.T) {
 				t.Fatalf("status = %d, want %d", rr.Code, http.StatusForbidden)
 			}
 		})
+	}
+}
+
+func TestNonMemberCannotManageLabels(t *testing.T) {
+	t.Parallel()
+
+	memberSvc := member.NewService(&authzMemberStore{access: map[string]member.Access{}})
+	h := issue.NewHandler(
+		issue.NewService(newHandlerMemoryStore()),
+		project.NewService(nil),
+		memberSvc,
+		nil,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	mux := http.NewServeMux()
+	h.Mount(mux)
+
+	cases := []string{
+		"/w/acme/labels",
+		"/w/acme/labels",
+	}
+	methods := []string{http.MethodGet, http.MethodPost}
+	for i, path := range cases {
+		req := httptest.NewRequest(methods[i], path, strings.NewReader("name=bug"))
+		if methods[i] == http.MethodPost {
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
+		req = req.WithContext(auth.ContextWithUser(req.Context(), auth.User{
+			ID:          "outsider",
+			Email:       "out@example.com",
+			DisplayName: "Outsider",
+		}))
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		if rr.Code != http.StatusNotFound {
+			t.Fatalf("%s %s status = %d, want %d", methods[i], path, rr.Code, http.StatusNotFound)
+		}
 	}
 }
 
