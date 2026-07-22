@@ -13,4 +13,6 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["go", "run", "./cmd/web"]
+# Migrate then run the web app (see scripts/dev-entrypoint.sh).
+# Invoked via sh so the bind-mounted script need not be executable.
+CMD ["sh", "./scripts/dev-entrypoint.sh"]
