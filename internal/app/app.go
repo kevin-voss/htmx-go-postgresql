@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/kevin-voss/htmx-go-postgresql/internal/activity"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/comment"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/config"
@@ -70,6 +71,10 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		logger,
 	)
 
+	activityRepo := activity.NewRepository(db)
+	activityService := activity.NewService(activityRepo)
+	txBeginner := activity.PoolBeginner{Pool: db}
+
 	projectRepo := project.NewRepository(db)
 	projectService := project.NewService(projectRepo)
 	projectHandler := project.NewHandler(
@@ -77,15 +82,17 @@ func New(cfg config.Config, logger *slog.Logger, db *pgxpool.Pool) *Application 
 		memberService,
 		renderer,
 		logger,
-	)
+	).WithActivity(activityService)
 
 	issueRepo := issue.NewRepository(db)
 	issueService := issue.NewService(issueRepo).
 		WithMembershipChecker(memberService).
-		WithLabelStore(issueRepo)
+		WithLabelStore(issueRepo).
+		WithActivity(activityService, txBeginner)
 
 	commentRepo := comment.NewRepository(db)
-	commentService := comment.NewService(commentRepo)
+	commentService := comment.NewService(commentRepo).
+		WithActivity(activityService, txBeginner)
 	commentHandler := comment.NewHandler(
 		commentService,
 		issueService,

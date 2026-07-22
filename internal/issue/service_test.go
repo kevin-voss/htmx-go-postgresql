@@ -109,7 +109,7 @@ func TestUpdateStatusAndPriority(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	updated, err := svc.UpdateStatus(context.Background(), "ws-1", created.IssueNumber, StatusInProgress)
+	updated, err := svc.UpdateStatus(context.Background(), "ws-1", created.IssueNumber, StatusInProgress, "user-1")
 	if err != nil {
 		t.Fatalf("update status: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestUpdateStatusAndPriority(t *testing.T) {
 		t.Fatalf("priority = %q, want %q", updated.Priority, PriorityHigh)
 	}
 
-	_, err = svc.UpdateStatus(context.Background(), "ws-1", created.IssueNumber, "nope")
+	_, err = svc.UpdateStatus(context.Background(), "ws-1", created.IssueNumber, "nope", "user-1")
 	if !errors.Is(err, ErrInvalidStatus) {
 		t.Fatalf("invalid status err = %v, want ErrInvalidStatus", err)
 	}

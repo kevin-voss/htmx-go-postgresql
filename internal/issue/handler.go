@@ -392,6 +392,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	issue, fieldErrs, err := h.service.Create(r.Context(), CreateInput{
+		WorkspaceID: ws.ID,
 		ProjectID:   p.ID,
 		Title:       r.FormValue("title"),
 		Description: r.FormValue("description"),
@@ -582,6 +583,11 @@ func (h *Handler) showInProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
 	ws, issueNumber, ok := h.parseWorkspaceIssue(w, r)
 	if !ok {
 		return
@@ -591,7 +597,7 @@ func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issue, err := h.service.UpdateStatus(r.Context(), ws.ID, issueNumber, r.FormValue("status"))
+	issue, err := h.service.UpdateStatus(r.Context(), ws.ID, issueNumber, r.FormValue("status"), user.ID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			http.NotFound(w, r)

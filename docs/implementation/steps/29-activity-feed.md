@@ -4,7 +4,7 @@
 | ----- | ----- |
 | ID | `STEP-29` |
 | Milestone | M6 — Portfolio quality |
-| Status | `todo` |
+| Status | `done` |
 | Depends on | STEP-28 |
 | Unlocks | STEP-30 |
 | Estimated scope | M |
@@ -45,10 +45,10 @@ Activity history demonstrates transactional service-layer design. At least one f
 
 ## Implementation checklist
 
-- [ ] migration
-- [ ] instrument key mutations
-- [ ] feed template
-- [ ] transaction test
+- [x] migration
+- [x] instrument key mutations
+- [x] feed template
+- [x] transaction test
 
 ## Files to create / modify
 
@@ -64,10 +64,10 @@ Service layer owns transactions. Repositories stay free of HTTP.
 
 ## Acceptance criteria
 
-- [ ] activity_events table populated on key actions
-- [ ] Feed visible in UI
-- [ ] At least one transaction writes domain row + activity together (test proves rollback behavior or joint commit)
-- [ ] Events are workspace/project scoped correctly
+- [x] activity_events table populated on key actions
+- [x] Feed visible in UI
+- [x] At least one transaction writes domain row + activity together (test proves rollback behavior or joint commit)
+- [x] Events are workspace/project scoped correctly
 
 ## Verification
 
@@ -108,6 +108,6 @@ Never commit `.env` or secrets. Never `--force` push to `main`.
 
 ## Handoff to next agent
 
-Event types: ____. Feed location: ____.
+Event types: `issue.created`, `issue.status_changed`, `comment.created`. Feed location: project show page (`/w/{slug}/projects/{projectSlug}`).
 
 After a successful push, mark this step `done` in any tracker and **stop** — do not start STEP-30.

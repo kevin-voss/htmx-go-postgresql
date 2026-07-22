@@ -137,9 +137,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	csrf := middleware.CSRFToken(r.Context())
 	body := r.FormValue("body")
 	created, fieldErrs, err := h.service.Create(r.Context(), CreateInput{
-		IssueID:  iss.ID,
-		AuthorID: user.ID,
-		Body:     body,
+		WorkspaceID: ws.ID,
+		ProjectID:   iss.ProjectID,
+		IssueID:     iss.ID,
+		AuthorID:    user.ID,
+		Body:        body,
 	})
 	if err != nil {
 		h.logger.Error("create comment failed", "err", err, "issue_id", iss.ID, "user_id", user.ID)

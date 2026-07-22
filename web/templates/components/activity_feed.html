@@ -1,0 +1,25 @@
+{{define "activity_feed"}}
+<section class="activity-feed" id="activity-feed" aria-labelledby="activity-feed-heading">
+  <h2 id="activity-feed-heading">Recent activity</h2>
+  {{if .Events}}
+  <ol class="activity-feed__list">
+    {{range .Events}}
+    {{template "activity_item" .}}
+    {{end}}
+  </ol>
+  {{else}}
+  <p class="activity-feed__empty">No activity yet. Create an issue or leave a comment to get started.</p>
+  {{end}}
+</section>
+{{end}}
+
+{{define "activity_item"}}
+<li class="activity-item">
+  <p class="activity-item__summary">{{.Summary}}</p>
+  <p class="activity-item__meta">
+    <span class="activity-item__type">{{.TypeLabel}}</span>
+    {{with .ActorName}} · {{.}}{{end}}
+    · <time datetime="{{.CreatedAt.Format "2006-01-02T15:04:05Z07:00"}}">{{.CreatedAt.Format "Jan 2, 15:04"}}</time>
+  </p>
+</li>
+{{end}}

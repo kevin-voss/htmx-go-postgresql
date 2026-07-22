@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/kevin-voss/htmx-go-postgresql/internal/activity"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/auth"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/member"
 	"github.com/kevin-voss/htmx-go-postgresql/internal/platform/middleware"
@@ -15,10 +17,11 @@ import (
 
 // Handler serves project HTTP endpoints.
 type Handler struct {
-	service *Service
-	members *member.Service
-	render  *render.Renderer
-	logger  *slog.Logger
+	service  *Service
+	members  *member.Service
+	activity *activity.Service
+	render   *render.Renderer
+	logger   *slog.Logger
 }
 
 // NewHandler constructs a project HTTP handler.
@@ -29,6 +32,12 @@ func NewHandler(service *Service, members *member.Service, renderer *render.Rend
 		render:  renderer,
 		logger:  logger,
 	}
+}
+
+// WithActivity attaches the activity feed for project pages.
+func (h *Handler) WithActivity(activityService *activity.Service) *Handler {
+	h.activity = activityService
+	return h
 }
 
 // Mount registers project routes on mux (all require authentication + membership).
@@ -79,6 +88,14 @@ type showPageData struct {
 	Project       Project
 	User          auth.User
 	Role          string
+	Events        []activityItemData
+}
+
+type activityItemData struct {
+	Summary   string
+	TypeLabel string
+	ActorName string
+	CreatedAt time.Time
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
@@ -204,6 +221,25 @@ func (h *Handler) show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	events := []activityItemData{}
+	if h.activity != nil {
+		raw, listErr := h.activity.ListByProject(r.Context(), p.ID, 20)
+		if listErr != nil {
+			h.logger.Error("list project activity failed", "err", listErr, "project_id", p.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		events = make([]activityItemData, 0, len(raw))
+		for _, e := range raw {
+			events = append(events, activityItemData{
+				Summary:   e.Summary,
+				TypeLabel: activity.TypeLabel(e.Type),
+				ActorName: e.ActorName,
+				CreatedAt: e.CreatedAt,
+			})
+		}
+	}
+
 	data := showPageData{
 		CSRFToken:     middleware.CSRFToken(r.Context()),
 		WorkspaceID:   ws.ID,
@@ -212,6 +248,7 @@ func (h *Handler) show(w http.ResponseWriter, r *http.Request) {
 		Project:       p,
 		User:          user,
 		Role:          role,
+		Events:        events,
 	}
 
 	var errRender error

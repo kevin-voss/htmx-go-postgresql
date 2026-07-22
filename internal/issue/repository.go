@@ -8,6 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/kevin-voss/htmx-go-postgresql/internal/activity"
 )
 
 // ErrNotFound is returned when no issue matches the lookup.
@@ -33,10 +35,30 @@ func (r *Repository) Create(ctx context.Context, projectID, title, description, 
 	if err != nil {
 		return Issue{}, fmt.Errorf("issue: begin create: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
+	issue, err := r.createOnTx(ctx, tx, projectID, title, description, createdBy)
+	if err != nil {
+		return Issue{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Issue{}, fmt.Errorf("issue: commit create: %w", err)
+	}
+	return issue, nil
+}
+
+// CreateTx inserts an issue using an activity transaction started by the service layer.
+func (r *Repository) CreateTx(ctx context.Context, tx activity.Tx, projectID, title, description, createdBy string) (Issue, error) {
+	pgxTx, ok := activity.AsPgx(tx)
+	if !ok {
+		return Issue{}, fmt.Errorf("issue: create tx: unsupported transaction type")
+	}
+	return r.createOnTx(ctx, pgxTx, projectID, title, description, createdBy)
+}
+
+func (r *Repository) createOnTx(ctx context.Context, tx pgx.Tx, projectID, title, description, createdBy string) (Issue, error) {
 	var lockedProjectID string
-	err = tx.QueryRow(ctx, `SELECT id FROM projects WHERE id = $1 FOR UPDATE`, projectID).Scan(&lockedProjectID)
+	err := tx.QueryRow(ctx, `SELECT id FROM projects WHERE id = $1 FOR UPDATE`, projectID).Scan(&lockedProjectID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Issue{}, ErrNotFound
@@ -75,10 +97,6 @@ func (r *Repository) Create(ctx context.Context, projectID, title, description, 
 	)
 	if err != nil {
 		return Issue{}, fmt.Errorf("issue: insert: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return Issue{}, fmt.Errorf("issue: commit create: %w", err)
 	}
 	return issue, nil
 }
@@ -224,6 +242,41 @@ func (r *Repository) GetByWorkspaceAndNumber(ctx context.Context, workspaceID st
 // UpdateStatus sets the status of an issue by id.
 func (r *Repository) UpdateStatus(ctx context.Context, id, status string) (Issue, error) {
 	return r.updateField(ctx, id, `status = $2`, status)
+}
+
+// UpdateStatusTx sets status using an activity transaction started by the service layer.
+func (r *Repository) UpdateStatusTx(ctx context.Context, tx activity.Tx, id, status string) (Issue, error) {
+	pgxTx, ok := activity.AsPgx(tx)
+	if !ok {
+		return Issue{}, fmt.Errorf("issue: update status tx: unsupported transaction type")
+	}
+	q := `
+		UPDATE issues
+		SET status = $2, updated_at = now()
+		WHERE id = $1
+		RETURNING ` + issueColumns
+	var issue Issue
+	err := pgxTx.QueryRow(ctx, q, id, status).Scan(
+		&issue.ID,
+		&issue.ProjectID,
+		&issue.IssueNumber,
+		&issue.Title,
+		&issue.Description,
+		&issue.Status,
+		&issue.Priority,
+		&issue.AssigneeID,
+		&issue.Archived,
+		&issue.CreatedBy,
+		&issue.CreatedAt,
+		&issue.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Issue{}, ErrNotFound
+		}
+		return Issue{}, fmt.Errorf("issue: update status tx: %w", err)
+	}
+	return issue, nil
 }
 
 // UpdatePriority sets the priority of an issue by id.

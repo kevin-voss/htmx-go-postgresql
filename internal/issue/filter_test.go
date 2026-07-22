@@ -32,10 +32,10 @@ func TestListByProjectFilterCombinations(t *testing.T) {
 	feature := mk("Add dark mode", "Theme toggle for the app shell")
 	chore := mk("Update docs", "Mention search filters in the handbook")
 
-	if _, err := svc.UpdateStatus(ctx, "ws", bug.IssueNumber, StatusInProgress); err != nil {
+	if _, err := svc.UpdateStatus(ctx, "ws", bug.IssueNumber, StatusInProgress, "user-1"); err != nil {
 		t.Fatalf("status bug: %v", err)
 	}
-	if _, err := svc.UpdateStatus(ctx, "ws", feature.IssueNumber, StatusTodo); err != nil {
+	if _, err := svc.UpdateStatus(ctx, "ws", feature.IssueNumber, StatusTodo, "user-1"); err != nil {
 		t.Fatalf("status feature: %v", err)
 	}
 	if _, err := svc.UpdatePriority(ctx, "ws", bug.IssueNumber, PriorityHigh); err != nil {

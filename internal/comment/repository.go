@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/kevin-voss/htmx-go-postgresql/internal/activity"
 )
 
 // ErrNotFound is returned when no comment matches the lookup.
@@ -24,15 +26,32 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 
 const commentColumns = `c.id, c.issue_id, c.author_id, u.display_name, c.body, c.created_at`
 
+type queryRower interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
 // Create inserts a comment and returns it with the author display name.
 func (r *Repository) Create(ctx context.Context, issueID, authorID, body string) (Comment, error) {
-	const q = `
+	return r.createOn(ctx, r.db, issueID, authorID, body)
+}
+
+// CreateTx inserts a comment using an activity transaction started by the service layer.
+func (r *Repository) CreateTx(ctx context.Context, tx activity.Tx, issueID, authorID, body string) (Comment, error) {
+	pgxTx, ok := activity.AsPgx(tx)
+	if !ok {
+		return Comment{}, fmt.Errorf("comment: create tx: unsupported transaction type")
+	}
+	return r.createOn(ctx, pgxTx, issueID, authorID, body)
+}
+
+func (r *Repository) createOn(ctx context.Context, q queryRower, issueID, authorID, body string) (Comment, error) {
+	const insert = `
 		INSERT INTO issue_comments (issue_id, author_id, body)
 		VALUES ($1, $2, $3)
 		RETURNING id, issue_id, author_id, body, created_at`
 
 	var c Comment
-	err := r.db.QueryRow(ctx, q, issueID, authorID, body).Scan(
+	err := q.QueryRow(ctx, insert, issueID, authorID, body).Scan(
 		&c.ID,
 		&c.IssueID,
 		&c.AuthorID,
@@ -43,7 +62,7 @@ func (r *Repository) Create(ctx context.Context, issueID, authorID, body string)
 		return Comment{}, fmt.Errorf("comment: create: %w", err)
 	}
 
-	err = r.db.QueryRow(ctx, `SELECT display_name FROM users WHERE id = $1`, authorID).Scan(&c.AuthorName)
+	err = q.QueryRow(ctx, `SELECT display_name FROM users WHERE id = $1`, authorID).Scan(&c.AuthorName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.AuthorName = "Unknown"

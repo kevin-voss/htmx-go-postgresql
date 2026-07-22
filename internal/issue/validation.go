@@ -12,6 +12,7 @@ const (
 
 // CreateInput is the public create-issue form payload.
 type CreateInput struct {
+	WorkspaceID string
 	ProjectID   string
 	Title       string
 	Description string
@@ -44,6 +45,7 @@ func ValidateCreate(in CreateInput) CreateErrors {
 
 func normalizeCreateInput(in CreateInput) CreateInput {
 	return CreateInput{
+		WorkspaceID: strings.TrimSpace(in.WorkspaceID),
 		ProjectID:   strings.TrimSpace(in.ProjectID),
 		Title:       strings.TrimSpace(in.Title),
 		Description: strings.TrimSpace(in.Description),

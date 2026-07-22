@@ -12,9 +12,11 @@ const (
 
 // CreateInput is the public create-comment form payload.
 type CreateInput struct {
-	IssueID  string
-	AuthorID string
-	Body     string
+	WorkspaceID string
+	ProjectID   string
+	IssueID     string
+	AuthorID    string
+	Body        string
 }
 
 // CreateErrors holds per-field validation messages for the create form.
@@ -43,8 +45,10 @@ func ValidateCreate(in CreateInput) CreateErrors {
 
 func normalizeCreateInput(in CreateInput) CreateInput {
 	return CreateInput{
-		IssueID:  strings.TrimSpace(in.IssueID),
-		AuthorID: strings.TrimSpace(in.AuthorID),
-		Body:     strings.TrimSpace(in.Body),
+		WorkspaceID: strings.TrimSpace(in.WorkspaceID),
+		ProjectID:   strings.TrimSpace(in.ProjectID),
+		IssueID:     strings.TrimSpace(in.IssueID),
+		AuthorID:    strings.TrimSpace(in.AuthorID),
+		Body:        strings.TrimSpace(in.Body),
 	}
 }

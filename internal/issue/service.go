@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/kevin-voss/htmx-go-postgresql/internal/activity"
 )
 
 // ErrInvalidStatus is returned when a status value is not allowed.
@@ -28,6 +30,12 @@ type Store interface {
 	Archive(ctx context.Context, id string) (Issue, error)
 }
 
+// txStore optionally supports writes inside an activity transaction.
+type txStore interface {
+	CreateTx(ctx context.Context, tx activity.Tx, projectID, title, description, createdBy string) (Issue, error)
+	UpdateStatusTx(ctx context.Context, tx activity.Tx, id, status string) (Issue, error)
+}
+
 // MembershipChecker verifies a user belongs to a workspace (for assignee).
 type MembershipChecker interface {
 	IsMember(ctx context.Context, workspaceID, userID string) (bool, error)
@@ -47,9 +55,11 @@ type LabelStore interface {
 
 // Service implements issue business rules.
 type Service struct {
-	store   Store
-	labels  LabelStore
-	members MembershipChecker
+	store    Store
+	labels   LabelStore
+	members  MembershipChecker
+	activity *activity.Service
+	tx       activity.Beginner
 }
 
 // NewService constructs an issue service.
@@ -66,6 +76,13 @@ func (s *Service) WithMembershipChecker(members MembershipChecker) *Service {
 // WithLabelStore attaches label persistence for tagging.
 func (s *Service) WithLabelStore(labels LabelStore) *Service {
 	s.labels = labels
+	return s
+}
+
+// WithActivity enables transactional activity recording for key mutations.
+func (s *Service) WithActivity(activityService *activity.Service, begin activity.Beginner) *Service {
+	s.activity = activityService
+	s.tx = begin
 	return s
 }
 
@@ -96,6 +113,7 @@ func (s *Service) GetByWorkspaceAndNumber(ctx context.Context, workspaceID strin
 
 // Create validates and persists an issue with the next per-project number.
 // On validation failure it returns field errors and a zero Issue.
+// When activity is configured, the issue row and activity event commit together.
 func (s *Service) Create(ctx context.Context, in CreateInput) (Issue, CreateErrors, error) {
 	normalized := normalizeCreateInput(in)
 	fieldErrs := ValidateCreate(normalized)
@@ -106,7 +124,38 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Issue, CreateErro
 		return Issue{}, CreateErrors{}, fmt.Errorf("issue: create: missing project or creator")
 	}
 
-	issue, err := s.store.Create(ctx, normalized.ProjectID, normalized.Title, normalized.Description, normalized.CreatedBy)
+	if s.activity == nil || s.tx == nil {
+		issue, err := s.store.Create(ctx, normalized.ProjectID, normalized.Title, normalized.Description, normalized.CreatedBy)
+		if err != nil {
+			return Issue{}, CreateErrors{}, fmt.Errorf("issue: create: %w", err)
+		}
+		return issue, CreateErrors{}, nil
+	}
+
+	txStore, ok := s.store.(txStore)
+	if !ok {
+		return Issue{}, CreateErrors{}, fmt.Errorf("issue: create: transactional store required for activity")
+	}
+	if normalized.WorkspaceID == "" {
+		return Issue{}, CreateErrors{}, fmt.Errorf("issue: create: missing workspace")
+	}
+
+	var issue Issue
+	err := s.activity.RecordAtomic(ctx, s.tx, func(ctx context.Context, tx activity.Tx) (activity.EventInput, error) {
+		created, err := txStore.CreateTx(ctx, tx, normalized.ProjectID, normalized.Title, normalized.Description, normalized.CreatedBy)
+		if err != nil {
+			return activity.EventInput{}, err
+		}
+		issue = created
+		return activity.EventInput{
+			WorkspaceID: normalized.WorkspaceID,
+			ProjectID:   created.ProjectID,
+			IssueID:     created.ID,
+			ActorID:     normalized.CreatedBy,
+			Type:        activity.TypeIssueCreated,
+			Summary:     "Created issue \"" + created.Title + "\"",
+		}, nil
+	})
 	if err != nil {
 		return Issue{}, CreateErrors{}, fmt.Errorf("issue: create: %w", err)
 	}
@@ -114,8 +163,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Issue, CreateErro
 }
 
 // UpdateStatus changes an issue's workflow status.
-func (s *Service) UpdateStatus(ctx context.Context, workspaceID string, issueNumber int, status string) (Issue, error) {
+// actorID is recorded on the activity event when activity is configured.
+func (s *Service) UpdateStatus(ctx context.Context, workspaceID string, issueNumber int, status, actorID string) (Issue, error) {
 	status = strings.TrimSpace(status)
+	actorID = strings.TrimSpace(actorID)
 	if !ValidStatus(status) {
 		return Issue{}, ErrInvalidStatus
 	}
@@ -123,7 +174,39 @@ func (s *Service) UpdateStatus(ctx context.Context, workspaceID string, issueNum
 	if err != nil {
 		return Issue{}, err
 	}
-	updated, err := s.store.UpdateStatus(ctx, issue.ID, status)
+
+	if s.activity == nil || s.tx == nil {
+		updated, err := s.store.UpdateStatus(ctx, issue.ID, status)
+		if err != nil {
+			return Issue{}, fmt.Errorf("issue: update status: %w", err)
+		}
+		return updated, nil
+	}
+
+	txStore, ok := s.store.(txStore)
+	if !ok {
+		return Issue{}, fmt.Errorf("issue: update status: transactional store required for activity")
+	}
+	if actorID == "" {
+		return Issue{}, fmt.Errorf("issue: update status: missing actor")
+	}
+
+	var updated Issue
+	err = s.activity.RecordAtomic(ctx, s.tx, func(ctx context.Context, tx activity.Tx) (activity.EventInput, error) {
+		next, err := txStore.UpdateStatusTx(ctx, tx, issue.ID, status)
+		if err != nil {
+			return activity.EventInput{}, err
+		}
+		updated = next
+		return activity.EventInput{
+			WorkspaceID: workspaceID,
+			ProjectID:   next.ProjectID,
+			IssueID:     next.ID,
+			ActorID:     actorID,
+			Type:        activity.TypeIssueStatusChanged,
+			Summary:     "Changed status to " + StatusLabel(next.Status) + " on \"" + next.Title + "\"",
+		}, nil
+	})
 	if err != nil {
 		return Issue{}, fmt.Errorf("issue: update status: %w", err)
 	}
