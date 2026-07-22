@@ -1,0 +1,52 @@
+# Local development stack.
+# Ports:
+#   8080 — application (app)
+#   5432 — PostgreSQL (database)
+#   8025 — Mailpit UI (mailpit)
+#   1025 — Mailpit SMTP (mailpit)
+services:
+  app:
+    build:
+      context: .
+      target: development
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: development
+      APP_ADDRESS: ":8080"
+      DATABASE_URL: postgres://forgeboard:forgeboard@database:5432/forgeboard?sslmode=disable
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    volumes:
+      - .:/app
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: forgeboard
+      POSTGRES_USER: forgeboard
+      POSTGRES_PASSWORD: forgeboard
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ expects the mount at /var/lib/postgresql (not .../data).
+      - forgeboard_database:/var/lib/postgresql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U forgeboard -d forgeboard
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  forgeboard_database:
